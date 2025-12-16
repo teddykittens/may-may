@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Keto Diary</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Keto Diary">
+
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        body { 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #fff7ed; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            overscroll-behavior-y: none;
+            transition: background-color 0.3s ease;
+        }
+        
+        /* ERROR BOX STYLE */
+        #error-display {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            z-index: 99999;
+            font-size: 12px;
+            border-bottom: 2px solid #ef4444;
+            max-height: 50vh;
+            overflow: auto;
+        }
+
+        body.partner-mode {
+            background-color: #2563eb !important; 
+        }
+
+        .partner-active .card-style { 
+            background-color: #eff6ff !important; 
+            border-color: #93c5fd !important; 
+        }
+
+        .partner-active .accent-text { color: #1e40af !important; } 
+        .partner-active .accent-bg { background-color: #3b82f6 !important; } 
+        .partner-active .accent-border { border-color: #60a5fa !important; } 
+        
+        .partner-active .btn-primary { 
+            background-color: #1d4ed8 !important; 
+            color: white !important;
+        }
+        .partner-active .btn-secondary {
+            background-color: #2563eb !important; 
+            color: white !important;
+        }
+
+        .partner-active .water-icon-active { color: #2563eb !important; } 
+        .partner-active .water-icon-inactive { color: #cbd5e1 !important; }
+        
+        input, select, textarea { font-size: 16px !important; } 
+        
+        .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .scale-in { animation: scaleIn 0.3s ease-out forwards; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        .toast-enter { animation: toastEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes toastEnter { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+        }
+        
+        .collapsible {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .collapsible.expanded {
+            max-height: 500px; 
+            opacity: 1;
+            padding-top: 8px;
+            pointer-events: auto;
+        }
+
+        .profile-btn-me.active { background-color: #f97316; color: white; } 
+        .profile-btn-partner.active { background-color: #3b82f6; color: white; } 
+        
+        .partner-active .profile-btn-me.active { background-color: #fdba74 !important; color: white !important; }
+        .partner-active .profile-btn-partner.active { background-color: #ffffff !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        
+        /* New styles for controlled visibility */
+        .search-menu-toggle {
+            transition: all 0.2s ease-in-out;
+        }
+        .search-menu-toggle.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+            max-height: 0;
+            overflow: hidden;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body id="body-tag">
+    <div id="error-display"></div>
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            var display = document.getElementById('error-display');
+            display.style.display = 'block';
+            display.innerHTML += '<strong>Error:</strong> ' + message + '<br><small>' + source + ':' + lineno + '</small><br><br>';
+        };
+    </script>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- SAFE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVgpdUSxWkYT6aZNO3WVlY52ZOlKnb1AY",
+            authDomain: "ketoapp-7f205.firebaseapp.com",
+            projectId: "ketoapp-7f205",
+            storageBucket: "ketoapp-7f205.appspot.com",
+            messagingSenderId: "YOUR_ID",
+            appId: "YOUR_APP_ID" 
+        };
+        
+        const IHERB_AFFILIATE_LINK = "https://iherb.co/1m3x6Q75?rcode=DHW8343&utm_medium=appshare";
+
+        let auth = null;
+        let db = null;
+        let provider = null;
+
+        try {
+            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            if (typeof firebase !== 'undefined') {
+                auth = firebase.auth();
+                db = firebase.firestore();
+                provider = new firebase.auth.GoogleAuthProvider();
+            }
+        } catch (err) {
+            console.error("Firebase Init Error:", err);
+            // Don't alert, just log. App will try to render without DB.
+        }
+
+        const { useState, useEffect, useMemo, useRef } = React;
+        
+        // --- HELPERS ---
+        const formatDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const isSameDay = (d1Str, d2) => {
+            let d1 = (d1Str instanceof Date) ? d1Str : new Date(d1Str);
+            let d2Obj = (d2 instanceof Date) ? d2 : new Date(d2);
+            return d1.getFullYear() === d2Obj.getFullYear() && d1.getMonth() === d2Obj.getMonth() && d1.getDate() === d2Obj.getDate();
+        };
+        const formatDisplayDate = (date, uiLang) => {
+            const langMap = { 'ru': 'ru-RU', 'en': 'en-US', 'uk': 'uk-UA' };
+            return date.toLocaleDateString(langMap[uiLang], { day: 'numeric', month: 'short' });
+        };
+        const formatTime = (date) => {
+             const d = new Date(date);
+             return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        const formatNum = (num) => {
+            if (!num) return 0;
+            return Math.round(num * 10) / 10;
+        };
+        const getSmiley = (cur, tgt) => (!tgt ? '😐' : (cur/tgt)*100 < 40 ? '😢' : (cur/tgt)*100 < 80 ? '😐' : (cur/tgt)*100 < 110 ? '😎' : '🤯');
+
+        // --- ICONS ---
+        const IconGoogle = () => <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+        const IconSettings = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+        const IconUtensils = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>;
+        const IconChefHat = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
+        const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+        const IconSave = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+        const IconX = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const IconSearch = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+        const IconBook = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
+        const IconEdit = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+        const IconClear = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
+        const IconLogout = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+        const IconCopy = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const IconDownload = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const IconUpload = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const IconCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+        const IconChevronLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>;
+        const IconChevronRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
+        const IconScale = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M5 21a7 7 0 0 1 0-14h14a7 7 0 0 1 0 14"/><circle cx="12" cy="11" r="2"/></svg>;
+        const IconGuest = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconGlass = (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 2h14l-1.5 18a2 2 0 0 1-2 2H8.5a2 2 0 0 1-2-2L5 2z" /><path d="M4 2h16" /></svg>;
+        const IconClock = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const IconList = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>;
+        const IconCopyDay = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>;
+        const IconBell = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>;
+
+        const DEFAULT_SETTINGS = { 
+            weight: 70, height: 170, age: 30, gender: 'female', activity: 1.2, proteinFactor: 1.2,
+            targetWeight: 65,
+            manualMode: false, manual: { cal: 1500, pro: 80, fat: 120, carb: 25 },
+            waterTarget: 2000,
+            cupVolume: 250,
+            language: 'ru',
+            remindersEnabled: false 
+        };
+
+        const TRANSLATIONS = {
+            ru: {
+                // ИСПРАВЛЕНО: Теперь User 1 / User 2
+                my_profile: "User 1", partner_profile: "User 2", diary: "Меню", recipe: "Рецепт", settings_title: "Настройки", name_label: "Имя",
+                water_target_label: "Цель по воде (мл)", cup_volume_label: "Объем одного стакана (мл)", manual_mode_label: "Вручну (Свои БЖУ)",
+                max_cal_label: "Максимум Калорий (ккал)", fat_label: "Жиры (г)", pro_label: "Белки (г)", carb_label: "Общ. Угли (г)",
+                weight_now_label: "Вес сейчас", weight_target_label: "Вес цель", height_label: "Рост", age_label: "Возраст", gender_label: "Пол",
+                male: "М", female: "Ж", activity_label: "Активность", act_sedentary: "Сидячий", act_light: "Легкая", act_medium: "Средняя",
+                protein_factor_label: "Белок: {n} г/кг", backup_title: "💾 Резервное копирование", download_backup: "Скачать копию",
+                upload_backup: "Загрузить копию", logout: "Выйти", close: "Закрыть", search_placeholder: "Найти продукт...",
+                cal_short: "ККАЛ", fat_short: "ЖИР", pro_short: "БЕЛ", carb_short: "ОБЩ.УГЛ", fiber_short: "КЛТ", 
+                net_carb_short: "Ч.Угл",
+                show_recipe: "Показать рецепт", hide_recipe: "Скрыть рецепт", gram_placeholder: "Грам", saved_toast: "Сохранено!",
+                deleted_toast: "Удалено", confirm_delete: "Удалить эту запись?", cancel: "Отмена", delete: "Удалить", eaten_title: "Съедено",
+                list_btn: "Список", yesterday_btn: "Вчера", report_btn: "Отчет", empty_log: "Пока пусто. Начните добавлять еду или скопируйте вчерашний день!",
+                new_recipe_title: "Новый рецепт", edit_recipe_title: "Изменить", name_placeholder: "Название", ingredients_placeholder: "Ингредиенты...",
+                per_100g: "На 100 грамм", save_btn: "Сохранить", your_recipes_title: "Ваши рецепты", search_recipes_placeholder: "Поиск рецептов...",
+                weight_today_title: "Ваш вес", weight_save_btn: "Ввести данные", 
+                shopping_list_title: "Список покупок", copy_btn: "Копировать",
+                close_btn: "Закрыть", login_google: "Войти через Google", login_guest: "Войти как гость", loading: "Загрузка...",
+                error_save: "Ошибка сохранения", backup_downloaded: "Резервная копия скачана!", data_restored: "Данные восстановлены!",
+                data_loaded: "Данные загружены (локально)!", invalid_file: "Неверный формат файла", error_read: "Ошибка чтения файла",
+                yesterday_empty: "Вчера не было записей", copied_n_entries: "Скопировано {n} записей!", shopping_list_header: "🛒 Список покупок ({date}):\n\n",
+                report_header: "👤 {name} | {date}\n", report_summary: "📊 СВОДКА:\n",
+                report_menu: "🍽 МЕНЮ:\n", net_carbs: "Чистые\nУгли",
+                remaining: "Ост", over: "⚠️ Перебор", fiber_day: "Клетчатка за день", fiber_card_label: "Клетчатка",
+                left_shed: "Сброшено: {n} кг", left_gain: "Набрано: {n} кг", left_to_lose: "Осталось сбросить", left_to_gain: "Нужно набрать",
+                language_label: "Язык / Language / Мова",
+                progress_days: "Прогресс за {n} дн.", current: "Текущий", target: "Цель", mean_weight: "Средний (7дн): {n} кг",
+                hunger: "Голод", left_to_lose: "Осталось сбросить", left_to_gain: "Нужно набрать", shed: "Сброшено лишнего", welcome: "Вкусное похудение", today: "Сегодня",
+                add_base_foods: "Добавить базовые продукты", base_added: "Базовые продукты добавлены!", no_new_foods: "Все базовые продукты уже есть", confirm_copy: "Скопировать меню из вчера?",
+                confirm_yes: "Да", enable_reminders: "Напоминать пить воду (1.5ч)", reminder_modal_title: "Выпили водичку?", drink_btn: "Да, выпила!", skip_btn: "Позже",
+                cups_short: "ст", copied_toast: "Скопировано!", total_carb_label: "Общ. Угли", next_drink: "до питья",
+                net_carb_short_main: "ЧИСТ. УГЛИ", 
+                hour_short: "ч", 
+                min_short: "м",
+                enable_notifications: "Включить уведомления 🔔",
+                time_to_drink: "Пора пить!",
+                week_loss: "За неделю",
+                two_week_loss: "За 2 недели", 
+                fast_before: "Голод до", 
+                meal_time: "Время",
+                weekly_progress_title: "Прогресс по неделям", 
+                target_reached: "Цель достигнута! 🎉",
+                ask_gemini: "✨ Спросить у Gemini",
+                ask_chatgpt: "🤖 Спросить у ChatGPT",
+                copied_hint: "Скопировано! Открываю сайт...",
+                enter_name_warning: "Введите название продукта!"
+            },
+            en: {
+                my_profile: "User 1", partner_profile: "User 2", diary: "Menu", recipe: "Recipe", settings_title: "Settings", name_label: "Name",
+                water_target_label: "Water Target (ml)", cup_volume_label: "Cup Volume (ml)", manual_mode_label: "Manual Mode (Custom Macros)",
+                max_cal_label: "Max Calories (kcal)", fat_label: "Fats (g)", pro_label: "Protein (g)", carb_label: "Total Carbs (g)",
+                weight_now_label: "Current Weight", weight_target_label: "Target Weight", height_label: "Height", age_label: "Age", gender_label: "Gender",
+                male: "M", female: "F", activity_label: "Activity", act_sedentary: "Sedentary", act_light: "Light", act_medium: "Medium",
+                protein_factor_label: "Protein: {n} g/kg", backup_title: "💾 Backup", download_backup: "Download Backup",
+                upload_backup: "Upload Upload", logout: "Log Out", close: "Close", search_placeholder: "Find food...",
+                cal_short: "KCAL", fat_short: "FAT", pro_short: "PRO", carb_short: "T.CARB", fiber_short: "FIB",
+                net_carb_short: "Net",
+                show_recipe: "Show Recipe", hide_recipe: "Hide Recipe", gram_placeholder: "Grams", saved_toast: "Saved!",
+                deleted_toast: "Deleted", confirm_delete: "Delete this entry?", cancel: "Cancel", delete: "Delete", eaten_title: "Eaten Today",
+                list_btn: "List", yesterday_btn: "Yesterday", report_btn: "Report", empty_log: "No entries yesterday",
+                new_recipe_title: "New Recipe", edit_recipe_title: "Edit", name_placeholder: "Name", ingredients_placeholder: "Ingredients...",
+                per_100g: "Per 100 grams", save_btn: "Save", your_recipes_title: "Your Recipes", search_recipes_placeholder: "Search recipes...",
+                weight_today_title: "Weight Today", weight_save_btn: "Enter Data",
+                shopping_list_title: "Shopping List", copy_btn: "Copy",
+                close_btn: "Close", login_google: "Sign in with Google", login_guest: "Sign in as Guest", loading: "Loading...",
+                error_save: "Save Error", backup_downloaded: "Backup downloaded!", data_restored: "Data restored!",
+                data_loaded: "Data loaded (locally)!", invalid_file: "Invalid file format", error_read: "File reading error",
+                yesterday_empty: "No entries yesterday", copied_n_entries: "Copied {n} entries!", shopping_list_header: "🛒 Shopping List ({date}):\n\n",
+                report_header: "👤 {name} | {date}\n", report_summary: "📊 SUMMARY:\n", report_menu: "🍽 MENU:\n", net_carbs: "Net\nCarbs",
+                remaining: "Left", over: "⚠️ Over", fiber_day: "Fiber today", fiber_card_label: "Fiber", left_shed: "Lost: {n} kg", left_gain: "Gained: {n} kg", left_to_lose: "Left to lose", left_to_gain: "Left to gain",
+                language_label: "Language / Язык / Мова",
+                progress_days: "Progress for {n} days", current: "Current", target: "Target", mean_weight: "Avg (7d): {n} kg",
+                hunger: "Fasting", left_to_lose: "Left to lose", left_to_gain: "Need to gain", shed: "Lost extra", welcome: "Tasty weight loss", today: "Today",
+                add_base_foods: "Add Base Foods", base_added: "Base foods added!", no_new_foods: "All base foods already exist", confirm_copy: "Copy yesterday's menu?",
+                confirm_yes: "Yes", enable_reminders: "Drink Water Reminder (1.5h)", reminder_modal_title: "Drank water?", drink_btn: "Yes!", skip_btn: "Later",
+                cups_short: "cups", copied_toast: "Copied!", total_carb_label: "Total Carbs", next_drink: "till drink",
+                net_carb_short_main: "NET CARBS",
+                hour_short: "h",
+                min_short: "m",
+                enable_notifications: "Enable Notifications 🔔",
+                time_to_drink: "Drink now!",
+                week_loss: "Weekly Loss",
+                two_week_loss: "2 Week Loss", 
+                fast_before: "Fasted", 
+                meal_time: "Time",
+                weekly_progress_title: "Weekly Progress", 
+                target_reached: "Goal reached! 🎉",
+                ask_gemini: "✨ Ask Gemini",
+                ask_chatgpt: "🤖 Ask ChatGPT",
+                copied_hint: "Copied! Opening site...",
+                enter_name_warning: "Enter food name!"
+            },
+            uk: {
+                my_profile: "User 1", partner_profile: "User 2", diary: "Меню", recipe: "Рецепт", settings_title: "Налаштування", name_label: "Ім'я",
+                water_target_label: "Ціль по воді (мл)", cup_volume_label: "Об'єм склянки (мл)", manual_mode_label: "Вручну (Свої БЖВ)",
+                max_cal_label: "Максимум Калорій (ккал)", fat_label: "Жири (г)", pro_label: "Білки (г)", carb_label: "Заг. Вуглі (г)",
+                weight_now_label: "Вага зараз", weight_target_label: "Вага ціль", height_label: "Зріст", age_label: "Вік", gender_label: "Стать",
+                male: "Ч", female: "Ж", activity_label: "Активність", act_sedentary: "Сидячий", act_light: "Легка", act_medium: "Середня",
+                protein_factor_label: "Білок: {n} г/кг", backup_title: "💾 Резервне копіювання", download_backup: "Завантажити копію",
+                upload_backup: "Завантажити файл", logout: "Вийти", close: "Закрити", search_placeholder: "Знайти продукт...",
+                cal_short: "ККАЛ", fat_short: "ЖИР", pro_short: "БІЛ", carb_short: "ЗАГ.ВУГ", fiber_short: "КЛІТ",
+                net_carb_short: "Чист.Вуг",
+                show_recipe: "Показати рецепт", hide_recipe: "Приховати рецепт", gram_placeholder: "Грам", saved_toast: "Збережено!",
+                deleted_toast: "Видалено", confirm_delete: "Видалити цей запис?", cancel: "Скасувати", delete: "Видалити", eaten_title: "З'їдено",
+                list_btn: "Список", yesterday_btn: "Вчора", report_btn: "Звіт", empty_log: "Поки що пусто. Додайте їжу або скопіюйте вчорашній день!",
+                new_recipe_title: "Новий рецепт", edit_recipe_title: "Змінити", name_placeholder: "Назва", ingredients_placeholder: "Інгредієнти...",
+                per_100g: "На 100 грам", save_btn: "Зберегти", your_recipes_title: "Ваші рецепти", search_recipes_placeholder: "Пошук рецептів...",
+                weight_today_title: "Ваша вага сьогодні", weight_save_btn: "Ввести дані",
+                shopping_list_title: "Список покупок", copy_btn: "Копіювати",
+                close_btn: "Закрити", login_google: "Увійти через Google", login_guest: "Увійти як гість", loading: "Завантаження...",
+                error_save: "Помилка збереження", backup_downloaded: "Резервну копію завантажено!", data_restored: "Дані відновлено!",
+                data_loaded: "Дані завантажено (локально)!", invalid_file: "Невірний формат файлу", error_read: "Помилка читання файлу",
+                yesterday_empty: "Вчора не було записів", copied_n_entries: "Скопійовано {n} записів!", shopping_list_header: "🛒 Список покупок ({date}):\n\n",
+                report_header: "👤 {name} | {date}\n", report_summary: "📊 ЗВЕДЕННЯ:\n", report_menu: "🍽 МЕНЮ:\n", net_carbs: "Чисті\nВуглі",
+                remaining: "Зал", over: "⚠️ Перебір", fiber_day: "Клітковина за день", fiber_card_label: "Клітковина",
+                left_shed: "Скинуто: {n} кг", left_gain: "Набрано: {n} кг", left_to_lose: "Залишилось скинути", left_to_gain: "Потрібно набрати",
+                language_label: "Мова / Language / Язык",
+                progress_days: "Прогрес за {n} дн.", current: "Поточна", target: "Ціль", mean_weight: "Середня (7дн): {n} кг",
+                hunger: "Голод", left_to_lose: "Залишилось скинути", left_to_gain: "Потрібно набрати", shed: "Скинуто зайвого", welcome: "Смачне схуднення", today: "Сьогодні",
+                add_base_foods: "Додати базові продукти", base_added: "Базовые продукти додано!", no_new_foods: "Всі базовые продукти вже є", confirm_copy: "Скопировать меню из вчера?",
+                confirm_yes: "Так", enable_reminders: "Нагадувати пити воду (1.5г)", reminder_modal_title: "Випили водичку?", drink_btn: "Так!", skip_btn: "Пізніше",
+                cups_short: "скл", copied_toast: "Скопійовано!", total_carb_label: "Заг. Вуглі", next_drink: "до пиття",
+                net_carb_short_main: "ЧИСТ. ВУГЛІ",
+                hour_short: "г",
+                min_short: "хв",
+                enable_notifications: "Увімкнути сповіщення 🔔",
+                time_to_drink: "Час пити!",
+                week_loss: "За тиждень",
+                two_week_loss: "За 2 тижні", 
+                fast_before: "Голод до", 
+                meal_time: "Час",
+                weekly_progress_title: "Тижневий прогрес", 
+                target_reached: "Ціль досягнуто! 🎉",
+                ask_gemini: "✨ Спитати Gemini",
+                ask_chatgpt: "🤖 Спитати ChatGPT",
+                copied_hint: "Скопійовано! Відкриваю сайт...",
+                enter_name_warning: "Введіть назву продукту!"
+            }
+        };
+
+        const STARTER_FOODS = [
+            { id: 'b_alf', name: 'Миндальная мука', cal: 600, pro: 22, fat: 53, carb: 18, fiber: 12, icon: '🥜', isCustom: false },
+            { id: 'b_cofl', name: 'Кокосовая мука', cal: 400, pro: 20, fat: 12, carb: 60, fiber: 40, icon: '🥥', isCustom: false },
+            { id: 'b_egg', name: 'Яйцо куриное (1 шт)', cal: 70, pro: 6, fat: 5, carb: 0.6, fiber: 0, icon: '🥚', isCustom: false },
+            { id: 'b_but', name: 'Масло сливочное 82%', cal: 748, pro: 0.5, fat: 82.5, carb: 0.8, fiber: 0, icon: '🧈', isCustom: false },
+            { id: 'b_chk_t', name: 'Куриное бедро (с кожей)', cal: 211, pro: 17, fat: 15, carb: 0, fiber: 0, icon: '🍗', isCustom: false },
+            { id: 'b_avo', name: 'Авокадо', cal: 160, pro: 2, fat: 15, carb: 9, fiber: 7, icon: '🥑', isCustom: false },
+            { id: 'b_cof', name: 'Кофе черный (без сахара)', cal: 2, pro: 0.2, fat: 0, carb: 0.2, fiber: 0, icon: '☕', isCustom: false }
+        ];
+
+        // --- REUSABLE COMPONENT FOR FOOD MACRO DISPLAY ---
+        const FoodInfoDisplay = ({ item, t }) => {
+            const isPer100g = !item.grams;
+            const net = Math.max(0, formatNum((item.carb || 0) - (item.fiber || 0)));
+            return (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="px-1.5 py-0.5 rounded-md border border-slate-100 bg-slate-50 text-slate-600 text-[10px] font-bold">
+                        {isPer100g ? t('per_100g') : `${item.grams}${t('gram_placeholder').substring(0,1).toLowerCase()}`}
+                    </div>
+                    {/* ККАЛ */}
+                    <div className="px-1.5 py-0.5 rounded-md border border-orange-100 bg-orange-50 text-orange-700 text-[10px] font-bold">
+                        {formatNum(item.cal)} {t('cal_short')}
+                    </div>
+                    {/* БЕЛКИ */}
+                    <div className="px-1.5 py-0.5 rounded-md border border-blue-100 bg-blue-50 text-blue-700 text-[10px] font-bold">
+                        {t('pro_short')}: {formatNum(item.pro)}
+                    </div>
+                    {/* ЖИРЫ */}
+                    <div className="px-1.5 py-0.5 rounded-md border border-emerald-100 bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                        {t('fat_short')}: {formatNum(item.fat)}
+                    </div>
+                    {/* ЧИСТЫЕ УГЛИ */}
+                    <div className="px-1.5 py-0.5 rounded-md border border-rose-300 bg-white text-rose-700 text-[10px] font-black shadow-sm">
+                        {t('net_carb_short')}: {net}
+                    </div>
+                    {/* ОБЩ. УГЛИ */}
+                    <div className="px-1.5 py-0.5 rounded-md border border-rose-100 bg-rose-50 text-rose-700 text-[10px] font-bold">
+                        {t('carb_short')}: {formatNum(item.carb)}
+                    </div>
+                    {/* КЛЕТЧАТКА (если есть) */}
+                    {(item.fiber > 0 || !isPer100g) && (
+                        <div className="px-1.5 py-0.5 rounded-md border border-purple-100 bg-purple-50 text-purple-700 text-[10px] font-bold">
+                             {t('fiber_card_label')}: {formatNum(item.fiber || 0)}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // --- END REUSABLE COMPONENT ---
+        
+        // --- NEW: RecipeModal Component ---
+        const RecipeModal = ({ isOpen, closeModal, recipe, saveRecipe, deleteRecipe, t, activeProfileId }) => {
+            if (!isOpen || !recipe) return null;
+
+            const [localFood, setLocalFood] = useState({ 
+                name: recipe.name, 
+                recipe: (recipe.recipe || '').replace(/\\n/g, '\n'), 
+                cal: recipe.cal, 
+                pro: recipe.pro, 
+                fat: recipe.fat, 
+                carb: recipe.carb, 
+                fiber: recipe.fiber || 0 
+            });
+
+            const handleChange = (e) => {
+                const { name, value, type } = e.target;
+                setLocalFood(prev => ({
+                    ...prev,
+                    [name]: type === 'number' ? parseFloat(value) || '' : value
+                }));
+            };
+
+            const handleSave = () => {
+                const foodObj = { 
+                    ...recipe, // Preserve original properties like id, isCustom
+                    name: localFood.name, 
+                    recipe: localFood.recipe, 
+                    pro: +localFood.pro, 
+                    fat: +localFood.fat, 
+                    carb: +localFood.carb, 
+                    fiber: +localFood.fiber, 
+                    cal: +localFood.cal 
+                };
+                if (!localFood.name || !localFood.cal) return;
+                saveRecipe(foodObj);
+                closeModal();
+            };
+            
+            const handleDelete = () => {
+                deleteRecipe(recipe.id);
+                closeModal();
+            };
+
+            const isPartner = activeProfileId === 'partner';
+            
+            return (
+                <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-0">
+                    <div className="bg-white rounded-t-3xl md:rounded-3xl p-6 w-full h-full md:max-w-xl md:max-h-[90vh] shadow-2xl scale-in flex flex-col">
+                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4 shrink-0">
+                            <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><IconChefHat/> {t('edit_recipe_title')}</h3>
+                            <button onClick={closeModal} className="bg-slate-100 p-2 rounded-full text-slate-500 hover:bg-slate-200"><IconX /></button>
+                        </div>
+                        <div className="overflow-y-auto space-y-4 flex-1 pb-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('name_placeholder')}</label>
+                                <input type="text" name="name" placeholder={t('name_placeholder')} value={localFood.name} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800"/>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('ingredients_placeholder')}</label>
+                                <textarea name="recipe" placeholder={t('ingredients_placeholder')} value={localFood.recipe} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-medium text-sm h-36 resize-none border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800"></textarea>
+                            </div>
+                            
+                            <div className="bg-slate-50 p-4 rounded-xl">
+                                <div className="text-center text-xs font-bold text-slate-400 mb-2 uppercase">{t('per_100g')}</div>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {/* CAL */}
+                                    <input type="number" name="cal" placeholder="0" value={localFood.cal} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-xs"/>
+                                    {/* PRO */}
+                                    <input type="number" name="pro" placeholder="0" value={localFood.pro} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-blue-600 bg-blue-50 text-xs"/>
+                                    {/* FAT */}
+                                    <input type="number" name="fat" placeholder="0" value={localFood.fat} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-emerald-600 bg-emerald-50 text-xs"/>
+                                    {/* CARB */}
+                                    <input type="number" name="carb" placeholder="0" value={localFood.carb} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-rose-600 bg-rose-50 text-xs"/>
+                                    {/* FIBER */}
+                                    <input type="number" name="fiber" placeholder="0" value={localFood.fiber} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-purple-600 bg-purple-50 text-xs"/>
+                                </div>
+                                <div className="grid grid-cols-5 gap-2 mt-1 text-center text-[10px] font-bold text-slate-500 uppercase">
+                                    <div className="text-slate-400">{t('cal_short')}</div><div className="text-blue-600">{t('pro_short')}</div><div className="text-emerald-600">{t('fat_short')}</div><div className="text-rose-600">{t('carb_short')}</div><div className="text-purple-600">{t('fiber_short')}</div>
+                                </div>
+                            </div>
+                            
+                            {/* AI Buttons - keeping existing logic to copy food name */}
+                             <div className="flex gap-2 pt-2">
+                                {/* Gemini Button */}
+                                <a 
+                                    href="https://gemini.google.com" 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => { 
+                                        const text = `КБЖУ и клетчатка на 100 г продукта: ${localFood.name}`;
+                                        if (!localFood.name) {
+                                            e.preventDefault();
+                                            showToast(t('enter_name_warning'), "error"); 
+                                            return;
+                                        }
+                                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                            navigator.clipboard.writeText(text).then(() => showToast(t('copied_hint'), "success"));
+                                        } else {
+                                            copyToClipboardFallback(text) && showToast(t('copied_hint'), "success");
+                                        }
+                                    }}
+                                    className="flex-1 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center"
+                                >
+                                    {t('ask_gemini')}
+                                </a>
+                                {/* ChatGPT Button */}
+                                <a 
+                                    href="https://chatgpt.com" 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => { 
+                                         const text = `КБЖУ и клетчатка на 100 г продукта: ${localFood.name}`;
+                                         if (!localFood.name) {
+                                            e.preventDefault();
+                                            showToast(t('enter_name_warning'), "error"); 
+                                            return;
+                                        }
+                                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                            navigator.clipboard.writeText(text).then(() => showToast(t('copied_hint'), "success"));
+                                        } else {
+                                            copyToClipboardFallback(text) && showToast(t('copied_hint'), "success");
+                                        }
+                                    }}
+                                    className="flex-1 py-3 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center"
+                                >
+                                    {t('ask_chatgpt')}
+                                </a>
+                            </div>
+                            
+                        </div>
+
+                        <div className="flex gap-3 pt-4 border-t border-slate-100 shrink-0">
+                            <button onClick={handleDelete} className="py-3 px-4 font-bold text-red-500 bg-red-50 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2"><IconTrash/> {t('delete')}</button>
+                            <button onClick={handleSave} disabled={!localFood.name || !localFood.cal} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 flex justify-center gap-2 ${isPartner ? 'bg-blue-600 shadow-blue-200 btn-secondary' : 'bg-indigo-600 shadow-indigo-200 btn-secondary'}`}><IconSave/> {t('save_btn')}</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        // --- END: RecipeModal Component ---
+
+        const copyToClipboardFallback = (text) => {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed"; 
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                return true;
+            } catch (err) {
+                console.error("Fallback copy failed", err);
+                return false;
+            }
+        };
+
+        // Helper to get correct initial name based on language
+        const getInitialName = (lang, isPartner) => {
+            // ИСПРАВЛЕНО: User 1 / User 2 по умолчанию
+            return isPartner ? 'User 2' : 'User 1';
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [authChecked, setAuthChecked] = useState(false); 
+            const [activeTab, setActiveTab] = useState('diary');
+            const [activeProfileId, setActiveProfileId] = useState('me'); 
+            
+            const [isWeightExpanded, setIsWeightExpanded] = useState(false);
+            const [isWaterExpanded, setIsWaterExpanded] = useState(false);
+            const [weightDate, setWeightDate] = useState(formatDate(new Date())); 
+            const [inputWeight, setInputWeight] = useState(''); 
+
+            // Auto-detect language
+            const detectLang = () => {
+                const lang = navigator.language || navigator.userLanguage || 'ru';
+                if (lang.startsWith('uk')) return 'uk';
+                if (lang.startsWith('en')) return 'en';
+                return 'ru';
+            };
+            const [uiLang, setUiLang] = useState(detectLang());
+            
+            // --- TRANSLATION HELPER ---
+            const t = (key, params = {}) => {
+                let text = TRANSLATIONS[uiLang][key] || key;
+                Object.keys(params).forEach(k => {
+                    text = text.replace(`{${k}}`, params[k]);
+                });
+                return text;
+            };
+
+            // Использование getInitialName для инициализации React state
+            const [appData, setAppData] = useState(() => ({
+                me: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(detectLang(), false) },
+                partner: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(detectLang(), true) },
+                customFoods: []
+            }));
+
+            const [toast, setToast] = useState(null); 
+            const [confirmModal, setConfirmModal] = useState(null); 
+            const [reminderModal, setReminderModal] = useState(false);
+            const [deferredReminder, setDeferredReminder] = useState(null); 
+            const [weighModal, setWeighModal] = useState(null);
+            const [shoppingModal, setShoppingModal] = useState(null);
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [now, setNow] = useState(new Date()); 
+
+            const [searchTerm, setSearchTerm] = useState('');
+            const [searchRecipeTerm, setSearchRecipeTerm] = useState(''); 
+            const [selectedFood, setSelectedFood] = useState(null);
+            const [gramInput, setGramInput] = useState('');
+            const [showSettings, setShowSettings] = useState(false);
+            const [showRecipe, setShowRecipe] = useState(false);
+            
+            // OLD: viewingRecipeId was used for the inline view on the create tab
+            const [viewingRecipeId, setViewingRecipeId] = useState(null); 
+            
+            // NEW: editingRecipeModal will hold the full food object for the modal
+            const [editingRecipeModal, setEditingRecipeModal] = useState(null);
+            
+            const [newFood, setNewFood] = useState({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' });
+            const [editingId, setEditingId] = useState(null); 
+            const [searchViewingRecipeId, setSearchViewingRecipeId] = useState(null); // Used for search list item view
+            
+            const fileInputRef = useRef(null);
+            const gramInputRef = useRef(null); 
+            const searchRef = useRef(null);
+            
+            // --- WEIGHT HELPERS ---
+            
+            const getWeightOnDay = (date, sortedLogs) => {
+                const relevantLogs = sortedLogs.filter(l => new Date(l.date).getTime() <= date.getTime());
+                return relevantLogs.length > 0 ? relevantLogs[relevantLogs.length - 1] : null;
+            };
+
+            const calculateWeeklyProgress = (logs, currentDate) => {
+                if (logs.length < 2) return [];
+
+                const sortedLogs = [...logs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const firstLogDate = new Date(sortedLogs[0].date);
+                const today = new Date(currentDate);
+                today.setHours(23, 59, 59, 999);
+                
+                const results = [];
+                let endDate = new Date(today); 
+                
+                while (true) {
+                    let startDate = new Date(endDate);
+                    startDate.setDate(startDate.getDate() - 7);
+                    
+                    if (startDate.getTime() < firstLogDate.getTime()) {
+                         const endLog = getWeightOnDay(endDate, sortedLogs);
+                         const startLog = getWeightOnDay(firstLogDate, sortedLogs);
+
+                         if (endLog && startLog && endLog.weight !== startLog.weight && !isSameDay(startLog.date, endLog.date)) {
+                             const change = (endLog.weight - startLog.weight).toFixed(1);
+                             results.push({
+                                 id: results.length,
+                                 startDate: formatDisplayDate(new Date(startLog.date), uiLang),
+                                 endDate: formatDisplayDate(endDate, uiLang),
+                                 change: change, 
+                             });
+                         }
+                         break;
+                    }
+                    
+                    const endLog = getWeightOnDay(endDate, sortedLogs);
+                    const startLog = getWeightOnDay(startDate, sortedLogs);
+
+                    if (endLog && startLog && endLog.weight !== startLog.weight && !isSameDay(startLog.date, endLog.date)) {
+                        const change = (endLog.weight - startLog.weight).toFixed(1);
+                        let displayStart = new Date(startDate);
+                        displayStart.setDate(displayStart.getDate() + 1);
+                        
+                        results.push({
+                            id: results.length,
+                            startDate: formatDisplayDate(displayStart, uiLang),
+                            endDate: formatDisplayDate(endDate, uiLang),
+                            change: change, 
+                        });
+                    }
+                    
+                    endDate = startDate;
+                    endDate.setHours(23, 59, 59, 999); 
+                    
+                    if (results.length > logs.length * 2) break;
+                }
+                return results.reverse().slice(0, 5);
+            };
+
+            // --- UI HANDLERS ---
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 4000); 
+            };
+            
+            const signIn = () => auth && auth.signInWithPopup(provider).catch(e => showToast("Error: " + e.message, 'error'));
+            const signInGuest = () => auth && auth.signInAnonymously().catch(e => showToast("Error: " + e.message, 'error')); 
+
+            const signOut = () => {
+                if(auth) {
+                    auth.signOut().catch(e => showToast("Error: " + e.message, 'error'));
+                }
+            };
+
+            const handleProfileSwitch = (newProfileId) => {
+                setActiveProfileId(newProfileId);
+                if (newProfileId === 'partner' && (activeTab === 'create' || editingId)) {
+                    setActiveTab('diary');
+                    setEditingId(null);
+                }
+            };
+
+            const changeDate = (days) => {
+                const newDate = new Date(currentDate);
+                newDate.setDate(newDate.getDate() + days);
+                setCurrentDate(newDate);
+            };
+
+            const handleDateInput = (e) => {
+                if(e.target.value) {
+                    const [y, m, d] = e.target.value.split('-').map(Number);
+                    setCurrentDate(new Date(y, m - 1, d));
+                }
+            };
+            
+            const openWeighModal = (initialWeight) => {
+                setWeighModal(true);
+                setInputWeight(initialWeight || settings.weight);
+                setWeightDate(formatDate(currentDate));
+            }
+            
+            const requestNotificationPermission = () => {
+                if ("Notification" in window) {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            showToast("Уведомления включены!");
+                        } else {
+                            showToast("Доступ к уведомлениям запрещен", "error");
+                        }
+                    });
+                } else {
+                    showToast("Ваш браузер не поддерживает уведомления", "error");
+                }
+            };
+
+            // FIX: This now only toggles visibility in search list, not main editor form
+            const toggleRecipeViewInList = (e, id) => {
+                e.stopPropagation();
+                setSearchViewingRecipeId(id === searchViewingRecipeId ? null : id);
+            }
+
+            // --- ASK AI FEATURE (Fixed: Pure Link + Copy) ---
+            const handleAiClick = (e, foodName) => {
+                // 1. If no name, prevent link navigation and show error
+                if (!foodName) {
+                    e.preventDefault(); 
+                    showToast(t('enter_name_warning'), "error"); 
+                    return;
+                }
+                
+                // 2. If name exists, proceed to copy, BUT DO NOT PREVENT DEFAULT.
+                // Letting the event bubble allows the <a href target="_blank"> to work natively.
+                
+                const text = `КБЖУ и клетчатка на 100 г продукта: ${foodName}`;
+                
+                // Try to copy synchronously/asynchronously
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => showToast(t('copied_hint'), "success"))
+                        .catch(err => {
+                             // Fallback if async clipboard fails
+                             if (copyToClipboardFallback(text)) {
+                                 showToast(t('copied_hint'), "success");
+                             }
+                        });
+                } else {
+                    // Fallback for older browsers
+                    if (copyToClipboardFallback(text)) {
+                         showToast(t('copied_hint'), "success");
+                    }
+                }
+            };
+
+            // --- SCROLL HELPER ---
+            const scrollToSearch = () => {
+                if (searchRef.current) {
+                    setTimeout(() => {
+                        const element = searchRef.current;
+                        const headerOffset = 10; 
+                        const elementPosition = element.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                    
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: "smooth"
+                        });
+                    }, 100);
+                }
+            };
+
+            // --- NOTIFICATIONS ---
+            useEffect(() => {
+                if (appData[activeProfileId]?.settings?.remindersEnabled && "Notification" in window) {
+                    Notification.requestPermission();
+                }
+            }, [appData]);
+
+            // --- AUTOFOCUS ---
+            useEffect(() => {
+                if (selectedFood && gramInputRef.current) {
+                    setTimeout(() => { gramInputRef.current.focus(); }, 50);
+                }
+            }, [selectedFood]);
+
+
+            // --- CORE LOGIC: AUTH & DATABASE ---
+            useEffect(() => {
+                const safetyTimeout = setTimeout(() => {
+                    if (!authChecked) {
+                         setAuthChecked(true); 
+                    }
+                }, 3000);
+
+                if (!auth) {
+                    setAuthChecked(true);
+                    return () => clearTimeout(safetyTimeout);
+                }
+
+                try {
+                    const unsubscribe = auth.onAuthStateChanged(async (u) => {
+                        setUser(u);
+                        setAuthChecked(true); 
+                        
+                        if (u && db) {
+                            try {
+                                const docRef = db.collection('users').doc(u.uid);
+                                
+                                docRef.onSnapshot((doc) => {
+                                    if (doc.exists) {
+                                        const data = doc.data();
+                                        const processProfile = (p) => ({
+                                            ...{ settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: 'User' },
+                                            ...(p || {})
+                                        });
+                                        
+                                        const userLang = data.me?.settings?.language || 'ru';
+                                        setUiLang(userLang);
+
+                                        let cFoods = data.customFoods || [];
+                                        if (!cFoods.length) {
+                                            cFoods = STARTER_FOODS.map(f => ({ 
+                                                ...f, 
+                                                name: TRANSLATIONS[userLang][f.id] || f.name 
+                                            }));
+                                        }
+
+                                        setAppData({
+                                            me: processProfile(data.me),
+                                            partner: processProfile(data.partner),
+                                            customFoods: cFoods
+                                        });
+                                    } else {
+                                        // Initial Create
+                                        const initialSettings = { ...DEFAULT_SETTINGS, language: uiLang };
+                                        docRef.set({
+                                            me: { settings: initialSettings, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, false) },
+                                            partner: { settings: initialSettings, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, true) },
+                                            customFoods: STARTER_FOODS.map(f => ({ 
+                                                ...f, 
+                                                name: TRANSLATIONS[uiLang][f.id] || f.name 
+                                            }))
+                                        });
+                                    }
+                                });
+                            } catch (e) {
+                                console.error("Snapshot Error", e);
+                                showToast(t('error_save'), 'error');
+                            }
+                        } else {
+                            // Offline/Fallback initialization using current UI language names
+                            setAppData({
+                                me: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, false) },
+                                partner: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, true) },
+                                customFoods: []
+                            });
+                        }
+                    });
+                    return () => {
+                        unsubscribe();
+                        clearTimeout(safetyTimeout);
+                    };
+                } catch (e) {
+                    console.error("Auth Listener Error", e);
+                    setAuthChecked(true);
+                }
+            }, []); 
+
+            // --- REMINDER INTERVAL ---
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    const currentNow = new Date();
+                    setNow(currentNow);
+                    const profileSettings = appData[activeProfileId]?.settings;
+                    const waterLog = appData[activeProfileId]?.waterLog || [];
+                    
+                    if (profileSettings?.remindersEnabled && waterLog.length > 0) {
+                        const sortedWater = [...waterLog].sort((a,b) => new Date(b.date) - new Date(a.date));
+                        const lastDrink = sortedWater.length > 0 ? new Date(sortedWater[0].date) : new Date(0); 
+                        let targetReminderTime = new Date(lastDrink.getTime() + 1.5 * 60 * 60 * 1000); 
+                        
+                        if (deferredReminder) targetReminderTime = new Date(deferredReminder);
+                        const diffTillTargetMs = targetReminderTime.getTime() - currentNow.getTime();
+
+                        if (diffTillTargetMs <= 0 && diffTillTargetMs > -60000) { 
+                             if ("Notification" in window && Notification.permission === "granted") {
+                                 const notif = new Notification("Keto Diary", { body: t('reminder_modal_title'), icon: "https://cdn-icons-png.flaticon.com/512/706/706164.png" });
+                                 notif.onclick = () => { window.focus(); setReminderModal(true); };
+                             } 
+                             setReminderModal(true); 
+                        }
+                    }
+                }, 30000); 
+                return () => clearInterval(interval);
+            }, [appData, activeProfileId, deferredReminder]);
+
+
+            // --- DATA & CALCS ---
+            const currentProfile = appData[activeProfileId];
+            const settings = currentProfile.settings;
+            const log = currentProfile.log || [];
+            const weightLog = currentProfile.weightLog || [];
+            const waterLog = currentProfile.waterLog || [];
+            const customFoods = appData.customFoods;
+
+            const targets = useMemo(() => {
+                if (settings.manualMode) return settings.manual;
+                let bmr = (10 * settings.weight) + (6.25 * settings.height) - (5 * settings.age) + (settings.gender === 'male' ? 5 : -161);
+                const tdee = Math.round(bmr * settings.activity * 0.85);
+                const carbG = 25; 
+                const proG = Math.round(settings.weight * settings.proteinFactor);
+                let fatCal = Math.max(0, tdee - (carbG * 4) - (proG * 4));
+                return { cal: tdee, pro: proG, fat: Math.round(fatCal / 9), carb: carbG };
+            }, [settings]);
+
+            const todayLog = useMemo(() => {
+                return log.filter(item => isSameDay(item.date, currentDate))
+                          .sort((a, b) => new Date(b.date) - new Date(a.date)); 
+            }, [log, currentDate]);
+
+            const dailyTotal = useMemo(() => {
+                return todayLog.reduce((acc, item) => ({
+                    cal: acc.cal + item.cal, 
+                    pro: acc.pro + item.pro, 
+                    fat: acc.fat + item.fat, 
+                    carb: acc.carb + item.carb,
+                    fiber: acc.fiber + (item.fiber || 0) 
+                }), { cal: 0, pro: 0, fat: 0, carb: 0, fiber: 0 });
+            }, [todayLog]);
+            
+            const netCarbs = Math.max(0, dailyTotal.carb - dailyTotal.fiber);
+
+            const dailyWater = useMemo(() => {
+                return waterLog.filter(item => isSameDay(item.date, currentDate)).reduce((acc, item) => acc + item.amount, 0);
+            }, [waterLog, currentDate]);
+            
+            const weightStats = useMemo(() => {
+                if (weightLog.length === 0) return null;
+                const sortedLogs = weightLog.sort((a,b) => new Date(a.date) - new Date(b.date));
+                const firstLog = sortedLogs[0];
+                const lastLog = sortedLogs.filter(l => isSameDay(l.date, currentDate)).pop() || sortedLogs[sortedLogs.length - 1]; 
+                
+                const currentW = parseFloat(lastLog.weight);
+                const targetW = parseFloat(settings.targetWeight) || currentW;
+                const totalChange = (currentW - firstLog.weight).toFixed(1);
+                const leftToTarget = (currentW - targetW).toFixed(1);
+
+                return {
+                    start: firstLog.weight,
+                    current: currentW,
+                    target: targetW,
+                    totalChange: totalChange,
+                    leftToTarget: leftToTarget,
+                    days: Math.ceil((new Date(lastLog.date) - new Date(firstLog.date)) / (1000 * 60 * 60 * 24)),
+                    weeklyHistory: calculateWeeklyProgress(weightLog, currentDate)
+                };
+            }, [weightLog, settings.targetWeight, currentDate]);
+            
+            const calculateFastingTime = (mealDateStr) => {
+                const mealDate = new Date(mealDateStr);
+                const previousMeals = log.filter(item => new Date(item.date).getTime() < mealDate.getTime()).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                let lastMealDate = null;
+                for (const item of previousMeals) {
+                    const itemTime = new Date(item.date);
+                    const isMidnight = itemTime.getHours() === 0 && itemTime.getMinutes() === 0 && itemTime.getSeconds() === 0 && isSameDay(item.date, mealDate);
+                    if (!isMidnight) { lastMealDate = itemTime; break; }
+                }
+                if (!lastMealDate) return { hours: 0, mins: 0, ms: 0 }; 
+                const diffMs = mealDate.getTime() - lastMealDate.getTime();
+                if (diffMs < 60000) return { hours: 0, mins: 0, ms: 0 }; 
+                const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                return { hours: diffHrs, mins: diffMins, ms: diffMs };
+            }
+            
+            const todayLogWithFasting = useMemo(() => {
+                return todayLog.map(item => ({ ...item, fasting: calculateFastingTime(item.date) }));
+            }, [todayLog, log]);
+
+            const fastingStats = useMemo(() => {
+                if (log.length === 0) return null;
+                const sortedLog = [...log].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const latestEntry = sortedLog[0];
+                let lastMealDate = new Date(latestEntry.date);
+                const latestTime = new Date(latestEntry.date);
+                const isLatestToday = isSameDay(latestEntry.date, now);
+                const isMidnight = latestTime.getHours() === 0 && latestTime.getMinutes() === 0 && latestTime.getSeconds() === 0;
+
+                if (isLatestToday && isMidnight && sortedLog.length > 1) {
+                    const realLatest = sortedLog.find(item => {
+                        const itemTime = new Date(item.date);
+                        const itemIsToday = isSameDay(item.date, now);
+                        const itemIsMidnight = itemTime.getHours() === 0 && itemTime.getMinutes() === 0 && itemTime.getSeconds() === 0;
+                        return !(itemIsToday && itemIsMidnight);
+                    });
+                    if (realLatest) lastMealDate = new Date(realLatest.date);
+                    else lastMealDate = latestTime; 
+                }
+                const diffMs = now - lastMealDate;
+                if (diffMs < 0) return { hours: 0, mins: 0, lastMeal: now };
+                const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                return { hours: diffHrs, mins: diffMins, lastMeal: lastMealDate };
+            }, [log, now]);
+
+            const nextDrinkTime = useMemo(() => {
+                const waterLog = appData[activeProfileId]?.waterLog || [];
+                if (!settings.remindersEnabled) return null;
+                const sortedWater = [...waterLog].sort((a,b) => new Date(b.date) - new Date(a.date));
+                const lastDrink = sortedWater.length > 0 ? new Date(sortedWater[0].date) : new Date(0); 
+                let targetTime = new Date(lastDrink.getTime() + 1.5 * 60 * 60 * 1000).getTime(); 
+                if (deferredReminder) targetTime = new Date(deferredReminder);
+                const diffMs = targetTime - now.getTime();
+                if (dailyWater >= (settings.waterTarget || 2000)) return null;
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                if (diffMs < 0) return { hours: 0, minutes: 0, isOverdue: true };
+                return { hours, minutes, isOverdue: false };
+            }, [waterLog, settings.remindersEnabled, deferredReminder, now, dailyWater, settings.waterTarget]);
+
+
+            const saveData = (newData) => {
+                setAppData(newData);
+                // !!! FIX: USING DIRECT PATH TO USERS (NO ARTIFACTS) !!!
+                if (user && db) db.collection('users').doc(user.uid).set(newData).catch(err => showToast(t('error_save'), 'error'));
+            };
+
+            const handleExport = () => {
+                const dataStr = JSON.stringify(appData, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `keto_backup_${formatDate(new Date())}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast(t('backup_downloaded'));
+            };
+
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if (importedData.me && importedData.partner) {
+                            setAppData(importedData);
+                            // !!! FIX: USING DIRECT PATH TO USERS !!!
+                            if (user && db) {
+                                db.collection('users').doc(user.uid).set(importedData)
+                                  .then(() => showToast(t('data_restored')))
+                                  .catch(e => showToast(t('error_save') + ": " + e.message, "error"));
+                            } else {
+                                showToast(t('data_loaded'));
+                            }
+                        } else {
+                            showToast(t('invalid_file'), "error");
+                        }
+                    } catch (err) {
+                        showToast(t('error_read'), "error");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = null;
+            };
+
+            const triggerImport = () => { if (fileInputRef.current) fileInputRef.current.click(); };
+            const updateSettings = (newSet) => { const newData = { ...appData, [activeProfileId]: { ...currentProfile, settings: newSet } }; saveData(newData); };
+            
+            // FIX: Implemented logic to save name in Firestore correctly
+            const updateName = (val) => { 
+                const newAppData = { ...appData, [activeProfileId]: { ...currentProfile, name: val } }; 
+                // Обновляем имя в appData
+                setAppData(newAppData); 
+                // Сохраняем в Firebase
+                if (user && db) {
+                    // Используем update() для изменения только поля 'name'
+                    db.collection('users').doc(user.uid).set(newAppData)
+                      .catch(err => console.error(t('error_save'), err));
+                }
+            };
+
+
+            const addToLog = () => {
+                if (!selectedFood || !gramInput) return;
+                const grams = parseFloat(gramInput);
+                const mult = grams / 100;
+                let entryDate = new Date().toISOString();
+                const newItem = {
+                    id: Date.now(), name: selectedFood.name, icon: selectedFood.icon || '🍽️', grams, 
+                    cal: Math.round(selectedFood.cal * mult), pro: Math.round(selectedFood.pro * mult),
+                    fat: Math.round(selectedFood.fat * mult), carb: Math.round(selectedFood.carb * mult),
+                    fiber: Math.round((selectedFood.fiber || 0) * mult), date: entryDate
+                };
+                const newLog = [...log, newItem]; 
+                saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
+                setSearchTerm(''); setSelectedFood(null); setGramInput(''); showToast(t('saved_toast'));
+            };
+
+            const removeLog = (id) => {
+                setConfirmModal({
+                    message: t('confirm_delete'),
+                    onConfirm: () => {
+                        const newLog = log.filter(i => i.id !== id);
+                        saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
+                        setConfirmModal(null); showToast(t('deleted_toast'));
+                    }
+                });
+            };
+
+            const toggleWaterCup = (index) => {
+                const vol = settings.cupVolume || 250; 
+                const filledCups = Math.floor(dailyWater / vol);
+                let entryDate;
+                if (isSameDay(currentDate.toISOString(), new Date())) { entryDate = new Date().toISOString(); } 
+                else { const d = new Date(currentDate); d.setHours(12, 0, 0, 0); entryDate = d.toISOString(); }
+
+                if (index < filledCups) {
+                    const todaysEntries = waterLog.filter(item => isSameDay(item.date, currentDate));
+                    if (todaysEntries.length > 0) {
+                        const sortedTodayEntries = todaysEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
+                        const latestEntry = sortedTodayEntries[0]; 
+                        const newLog = waterLog.filter(w => w.id !== latestEntry.id);
+                        saveData({ ...appData, [activeProfileId]: { ...currentProfile, waterLog: newLog } });
+                    }
+                } else {
+                    const newLog = [...waterLog, { id: Date.now(), date: entryDate, amount: vol }]; 
+                    saveData({ ...appData, [activeProfileId]: { ...currentProfile, waterLog: newLog } });
+                    if (isSameDay(currentDate.toISOString(), new Date())) setDeferredReminder(null);
+                }
+            };
+
+            const confirmAddWater = () => {
+                const vol = settings.cupVolume || 250;
+                const newLog = [...waterLog, { id: Date.now(), date: new Date().toISOString(), amount: vol }]; 
+                saveData({ ...appData, [activeProfileId]: { ...currentProfile, waterLog: newLog } });
+                setReminderModal(false); setDeferredReminder(null); showToast(t('saved_toast'));
+            };
+            
+            const deferReminder = () => { setDeferredReminder(new Date(Date.now() + 20 * 60 * 1000).getTime()); setReminderModal(false); };
+
+            const saveWeight = (val, dateStr) => {
+                const w = parseFloat(val); if (!w) return;
+                const filtered = weightLog.filter(item => item.date.substring(0, 10) !== dateStr);
+                const newLog = [...filtered, { id: Date.now(), date: new Date(dateStr).toISOString(), weight: w }].sort((a,b) => new Date(a.date) - new Date(b.date));
+                const isToday = formatDate(new Date()) === dateStr;
+                const newSettings = isToday ? { ...settings, weight: w } : settings;
+                saveData({ ...appData, [activeProfileId]: { ...currentProfile, weightLog: newLog, settings: newSettings } });
+                setWeighModal(null); setWeightDate(formatDate(new Date())); setInputWeight(''); showToast(t('saved_toast'));
+            };
+
+            // FIX: This function now sets the data to open the fullscreen modal
+            const startEditCustomFood = (e, food) => {
+                e.stopPropagation();
+                setEditingRecipeModal(food);
+                setSearchViewingRecipeId(null); // Close inline view if open
+                // The main "Create" form is now bypassed for editing in the modal
+            };
+
+            // FIX: The saveCustomFood now handles both new and existing recipes from the main form OR the modal
+            const saveCustomFood = (foodToSave = newFood) => {
+                const { name, pro, fat, carb, fiber, cal, recipe } = foodToSave;
+                const id = foodToSave.id || editingId;
+
+                if (!name || !cal) {
+                    showToast(t('enter_name_warning'), "error");
+                    return;
+                }
+                
+                let newCustomFoods = [...customFoods];
+                const foodObj = { 
+                    name, pro: +pro, fat: +fat, carb: +carb, fiber: +fiber, cal: +cal, recipe, 
+                    isCustom: true, icon: '🍽️' 
+                };
+
+                if (id) {
+                    // Editing existing food (from modal or main form)
+                    newCustomFoods = newCustomFoods.map(f => f.id === id ? { ...f, ...foodObj } : f);
+                    setEditingId(null);
+                } else {
+                    // Creating new food (only from main form)
+                    newCustomFoods.unshift({ id: 'c_' + Date.now(), ...foodObj });
+                }
+                
+                saveData({ ...appData, customFoods: newCustomFoods });
+                setNewFood({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }); 
+                setEditingRecipeModal(null); // Close modal
+                showToast(t('saved_toast'));
+            };
+
+            const deleteCustomFood = (id) => {
+                const newCustomFoods = customFoods.filter(f => f.id !== id);
+                saveData({ ...appData, customFoods: newCustomFoods });
+                setConfirmModal(null); 
+                showToast(t('deleted_toast'));
+                setEditingRecipeModal(null);
+            };
+
+            const deleteCustomFoodWrapper = (e, id) => {
+                e.stopPropagation();
+                setConfirmModal({
+                    message: t('confirm_delete'),
+                    onConfirm: () => deleteCustomFood(id)
+                });
+            };
+
+            const copyYesterday = () => {
+                const yesterday = new Date(currentDate); yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayLog = log.filter(item => isSameDay(item.date, yesterday));
+                if (yesterdayLog.length === 0) { showToast(t('yesterday_empty'), "error"); return; }
+                
+                setConfirmModal({
+                    message: t('confirm_copy'),
+                    onConfirm: () => {
+                        const newEntries = yesterdayLog.map((item, index) => ({
+                            ...item, id: Date.now() + index, 
+                            date: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).toISOString()
+                        }));
+                        const newLog = [...log, ...newEntries]; 
+                        saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
+                        showToast(t('copied_n_entries', {n: newEntries.length})); setConfirmModal(null);
+                    },
+                    isCopy: true 
+                });
+            };
+
+            const addBaseFoods = () => {
+                const base = STARTER_FOODS.map(f => ({ ...f, name: TRANSLATIONS[uiLang][f.id] || f.name }));
+                const currentIds = new Set(customFoods.map(f => f.id));
+                const newFoods = base.filter(f => !currentIds.has(f.id));
+                if (newFoods.length === 0) { showToast(t('no_new_foods')); return; }
+                const updatedList = [...newFoods, ...customFoods];
+                saveData({ ...appData, customFoods: updatedList });
+                showToast(t('base_added'));
+            };
+
+            const openShoppingList = () => {
+                const uniqueItems = {};
+                todayLog.forEach(item => {
+                    if (uniqueItems[item.name]) { uniqueItems[item.name].grams += item.grams; } else { uniqueItems[item.name] = { grams: item.grams }; }
+                });
+                const sortedNames = Object.keys(uniqueItems).sort();
+                let text = t('shopping_list_header', {date: formatDisplayDate(currentDate, uiLang)});
+                sortedNames.forEach(name => { text += `▫️ ${name}: ${Math.round(uniqueItems[name].grams)}${t('gram_placeholder').substring(0,1).toLowerCase()}\n`; });
+                setShoppingModal(text);
+            };
+
+            const formatDuration = (ms) => {
+                const totalSeconds = Math.floor(ms / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                let result = '';
+                if (hours > 0) result += `${hours}${t('hour_short')} `;
+                if (minutes > 0 || hours === 0) result += `${minutes}${t('min_short')}`;
+                return result.trim();
+            }
+
+            const copyToClipboard = (text) => {
+                const fallback = (str) => {
+                    const ta = document.createElement("textarea");
+                    ta.value = str; ta.style.position="fixed"; document.body.appendChild(ta); ta.focus(); ta.select();
+                    try { document.execCommand('copy'); showToast(t('copied_toast')); } catch (e) { showToast("Error copying", 'error'); }
+                    document.body.removeChild(ta);
+                };
+                if (!navigator.clipboard) { fallback(text); return; }
+                navigator.clipboard.writeText(text).then(() => showToast(t('copied_toast'))).catch(() => fallback(text)); 
+            };
+
+            const copyRemaining = () => {
+                const formatDiff = (current, target, unit = '') => { const diff = target - current; return diff >= 0 ? `(${t('remaining')}: ${diff}${unit})` : `(${t('over')}: ${Math.abs(diff)}${unit})`; };
+                let text = t('report_header', {name: currentProfile.name, date: formatDisplayDate(currentDate, uiLang)});
+                text += t('report_summary');
+                text += `🔥 ${t('cal_short')}: ${dailyTotal.cal} / ${targets.cal} ${formatDiff(dailyTotal.cal, targets.cal)}\n`;
+                text += `🍗 ${t('pro_short')}: ${dailyTotal.pro} / ${targets.pro}г ${formatDiff(dailyTotal.pro, targets.pro, 'г')}\n`; 
+                text += `🥑 ${t('fat_short')}: ${dailyTotal.fat} / ${targets.fat}г ${formatDiff(dailyTotal.fat, targets.fat, 'г')}\n`; 
+                text += `🥦 ${t('net_carb_short')}: ${netCarbs} / ${targets.carb}г ${formatDiff(netCarbs, targets.carb, 'г')}\n`;
+                text += `${t('fiber_day')}: ${dailyTotal.fiber}г\n\n`; 
+                text += t('report_menu');
+                if (todayLogWithFasting.length === 0) { text += `(${t('empty_log')})\n`; } else {
+                    todayLogWithFasting.forEach((item, index) => {
+                        const itemNetCarbs = Math.max(0, item.carb - (item.fiber || 0)); 
+                        const time = formatTime(item.date);
+                        const fastingDuration = formatDuration(item.fasting.ms);
+                        text += `${index + 1}. ${item.name} (${item.grams}г) - ${t('meal_time')}: ${time}\n`;
+                        text += `   └ [${t('fast_before')}: ${fastingDuration}] | ${item.cal} ${t('cal_short')} [${t('pro_short')}:${item.pro}, ${t('fat_short')}:${item.fat}, ${t('net_carb_short')}:${itemNetCarbs}, ${t('carb_short')}:${item.carb}, ${t('fiber_short')}:${item.fiber || 0}]\n`;
+                    });
+                }
+                copyToClipboard(text);
+            };
+
+            const WeightChart = ({ logs, activeProfileId }) => {
+                const strokeColor = activeProfileId === 'partner' ? '#2563eb' : '#f97316';
+                const fillColor = activeProfileId === 'partner' ? '#3b82f6' : '#f97316';
+                if (!logs || logs.length < 2) return null;
+                const recentLogs = logs.slice(-30);
+                const weights = recentLogs.map(l => l.weight);
+                const minW = Math.min(...weights) - 0.5;
+                const maxW = Math.max(...weights) + 0.5;
+                const points = recentLogs.map((l, i) => {
+                    const x = (i / (recentLogs.length - 1)) * 100;
+                    const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40;
+                    return `${x},${y}`;
+                }).join(' ');
+                return (
+                    <div className="w-full h-10 mt-2 bg-white/50 rounded-lg p-1 relative overflow-hidden">
+                        <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                            <polyline fill="none" stroke={strokeColor} strokeWidth="2" points={points} vectorEffect="non-scaling-stroke"/>
+                            {recentLogs.map((l, i) => {
+                                const x = (i / (recentLogs.length - 1)) * 100;
+                                const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40;
+                                return <circle key={i} cx={x} cy={y} r="1.5" fill={fillColor} vectorEffect="non-scaling-stroke"/>
+                            })}
+                        </svg>
+                        <div className="absolute top-0 right-0 text-[8px] text-slate-400 font-bold">{recentLogs[recentLogs.length-1].weight}kg</div>
+                    </div>
+                );
+            };
+
+            if (!authChecked) return (<div className="min-h-screen flex items-center justify-center bg-[#fff7ed]"><div className="text-center text-slate-500 font-bold">{t('loading')}</div></div>);
+            if (!user) return (
+                <div className="min-h-screen bg-[#fff7ed] flex flex-col items-center justify-center p-6">
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-orange-100 max-w-sm w-full text-center fade-in-up">
+                        <img src="https://cdn-icons-png.flaticon.com/512/706/706164.png" className="w-40 h-40 mx-auto mb-6 object-contain drop-shadow-md"/>
+                        <h1 className="text-3xl font-black text-orange-900 mb-2">Keto Diary</h1>
+                        <p className="text-slate-500 mb-8 font-medium">{t('welcome') || "Tasty weight loss"}</p>
+                        <div className="mb-6 flex justify-center">
+                            <div className="bg-slate-50 p-1 rounded-xl flex gap-1 border border-slate-100 items-center">
+                                <button onClick={()=>setUiLang('ru')} className={`px-3 py-2 rounded-lg text-lg font-black transition-all ${uiLang==='ru' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:bg-slate-100'}`}>RU</button>
+                                <button onClick={()=>setUiLang('en')} className={`px-3 py-2 rounded-lg text-xl transition-all ${uiLang==='en' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:bg-slate-100'}`}>🇬🇧</button>
+                                <button onClick={()=>setUiLang('uk')} className={`px-3 py-2 rounded-lg text-xl transition-all ${uiLang==='uk' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:bg-slate-100'}`}>🇺🇦</button>
+                            </div>
+                        </div>
+                        <button onClick={signIn} className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-4 px-6 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95 hover:border-orange-200">
+                            <IconGoogle /> <span>{t('login_google')}</span>
+                        </button>
+                        <button onClick={signInGuest} className="w-full mt-3 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold py-4 px-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95">
+                             <IconGuest /> <span>{t('login_guest')}</span>
+                        </button>
+                    </div>
+                    {toast && <div className={`fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none`}><div className={`rounded-2xl shadow-2xl px-6 py-4 flex flex-col items-center gap-2 backdrop-blur-md pointer-events-auto toast-enter max-w-xs text-center border border-white/20 ${toast.type === 'success' ? 'bg-emerald-600/95 text-white' : 'bg-red-500/95 text-white'}`}><div className="flex items-center gap-3">{toast.type === 'success' && <IconCheck className="w-6 h-6"/>}<div className="font-bold text-base">{toast.message}</div></div></div></div>}
+                </div>
+            );
+            
+            const cupVol = settings.cupVolume || 250; 
+            const targetCups = Math.ceil((settings.waterTarget || 2000) / cupVol);
+            const drankCups = Math.floor(dailyWater / cupVol);
+
+            return (
+                <div className={`min-h-screen pb-24 text-slate-800 relative ${activeProfileId === 'partner' ? 'partner-mode' : ''}`} style={activeProfileId === 'partner' ? { backgroundColor: '#2563eb' } : { backgroundColor: '#fff7ed' }}>
+                    
+                    {/* MODALS */}
+                    {confirmModal && (
+                        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center">
+                                <h3 className="font-bold text-lg mb-6 text-slate-800">{confirmModal.message}</h3>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setConfirmModal(null)} className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200">{t('cancel')}</button>
+                                    <button onClick={confirmModal.onConfirm} className="flex-1 py-3 font-bold text-white bg-emerald-500 rounded-xl shadow-lg shadow-emerald-200">{confirmModal.isCopy ? t('confirm_yes') : t('delete')}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {reminderModal && (
+                        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center">
+                                <div className="flex justify-center mb-4"><IconGlass className="w-12 h-12 text-blue-500"/></div>
+                                <h3 className="font-bold text-xl mb-6 text-slate-800">{t('reminder_modal_title')}</h3>
+                                <div className="flex gap-3">
+                                    <button onClick={deferReminder} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('skip_btn')}</button>
+                                    <button onClick={confirmAddWater} className="flex-1 py-3 font-bold text-white bg-blue-500 rounded-xl shadow-lg shadow-blue-200">{t('drink_btn')}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {weighModal && (
+                        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center">
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">{t('weight_today_title')}</h3>
+                                <div className="text-sm font-bold text-slate-400 mb-6">{formatDisplayDate(new Date(weightDate), uiLang)}</div>
+                                <input type="number" value={inputWeight} onChange={(e) => setInputWeight(e.target.value)} className={`w-full p-4 text-3xl font-black text-center bg-slate-50 rounded-2xl border mb-6 focus:ring-2 outline-none text-slate-800 ${activeProfileId === 'partner' ? 'border-blue-100 focus:ring-blue-200' : 'border-orange-100 focus:ring-orange-200'}`} autoFocus step="0.1"/>
+                                <div className="flex gap-3">
+                                    <button onClick={() => {setWeighModal(null); setInputWeight('')}} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('cancel')}</button>
+                                    <button onClick={() => saveWeight(inputWeight, weightDate)} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg ${activeProfileId === 'partner' ? 'bg-blue-500 shadow-blue-200' : 'bg-orange-500 shadow-orange-200'}`}>{t('weight_save_btn')}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {shoppingModal && (
+                        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in text-slate-800">
+                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><IconList/> {t('shopping_list_title')}</h3>
+                                <textarea readOnly className="w-full h-48 bg-slate-50 p-3 rounded-xl text-sm font-medium border-none outline-none resize-none mb-4 text-slate-800" value={shoppingModal}></textarea>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShoppingModal(null)} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('close_btn')}</button>
+                                    <button onClick={() => copyToClipboard(shoppingModal)} className="flex-1 py-3 font-bold text-white bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">{t('copy_btn')}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* NEW: Recipe Edit/View Modal */}
+                    {editingRecipeModal && (
+                        <RecipeModal
+                            isOpen={!!editingRecipeModal}
+                            closeModal={() => setEditingRecipeModal(null)}
+                            recipe={editingRecipeModal}
+                            saveRecipe={saveCustomFood}
+                            deleteRecipe={deleteCustomFood}
+                            t={t}
+                            activeProfileId={activeProfileId}
+                        />
+                    )}
+                    
+                    {toast && (
+                        <div className={`fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none`}>
+                            <div className={`rounded-2xl shadow-2xl px-6 py-4 flex flex-col items-center gap-2 backdrop-blur-md pointer-events-auto toast-enter max-w-xs text-center border border-white/20 ${toast.type === 'success' ? 'bg-emerald-600/95 text-white' : 'bg-red-500/95 text-white'}`}>
+                                <div className="flex items-center gap-3">{toast.type === 'success' && <IconCheck className="w-6 h-6"/>}<div className="font-bold text-base">{toast.message}</div></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showSettings && (
+                            <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                                <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto scale-in">
+                                    <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-xl text-slate-800">{t('settings_title')}</h3><button onClick={() => setShowSettings(false)} className="bg-slate-100 p-2 rounded-full"><IconX /></button></div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-400 uppercase ml-1">{t('language_label')}</label>
+                                            <select value={settings.language || 'ru'} onChange={e=>updateSettings({...settings, language: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold"><option value="ru">Русский (RU)</option><option value="en">English 🇬🇧</option><option value="uk">Українська 🇺🇦</option></select>
+                                        </div>
+                                        <div><label className="text-xs font-bold text-slate-400 uppercase ml-1">{t('name_label')}</label><input type="text" value={currentProfile.name} onChange={e=>updateName(e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold"/></div>
+                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
+                                            <div><label className="text-xs font-bold text-blue-800 uppercase ml-1 block mb-2">{t('water_target_label')}</label><input type="number" step="250" value={settings.waterTarget || 2000} onChange={e=>updateSettings({...settings, waterTarget: +e.target.value})} className="w-full bg-white p-3 rounded-xl border border-blue-200 font-bold text-blue-600"/></div>
+                                            <div><label className="text-xs font-bold text-blue-800 uppercase ml-1 block mb-2">{t('cup_volume_label')}</label><input type="number" step="10" value={settings.cupVolume || 250} onChange={e=>updateSettings({...settings, cupVolume: +e.target.value})} className="w-full bg-white p-3 rounded-xl border border-blue-200 font-bold text-blue-600"/></div>
+                                            <div className="flex items-center gap-2 pt-2 border-t border-blue-200/50"><input type="checkbox" checked={settings.remindersEnabled || false} onChange={e=>updateSettings({...settings, remindersEnabled: e.target.checked})} className="w-5 h-5 accent-blue-600"/><label className="text-xs font-bold text-blue-800">{t('enable_reminders')}</label></div>
+                                        </div>
+                                        <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100"><button onClick={addBaseFoods} className="w-full py-3 bg-white hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl shadow-sm border border-emerald-200 flex items-center justify-center gap-2 transition-all"><IconRefresh className="w-5 h-5"/><span>{t('add_base_foods')}</span></button></div>
+                                        <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                                            <div className="flex justify-between items-center"><span className="font-bold text-indigo-900 text-sm">{t('manual_mode_label')}</span><input type="checkbox" checked={settings.manualMode} onChange={e=>updateSettings({...settings, manualMode: e.target.checked})} className="w-5 h-5 accent-indigo-600"/></div>
+                                            {settings.manualMode && (
+                                                <div className="mt-4 space-y-3">
+                                                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('max_cal_label')}</label><input type="number" value={settings.manual.cal} onChange={e=>updateSettings({...settings, manual: {...settings.manual, cal: +e.target.value}})} className="w-full p-3 rounded-xl border border-slate-200 font-black text-lg text-center"/></div>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <div><label className="block text-[10px] font-bold text-emerald-600 uppercase mb-1 text-center">{t('fat_label')}</label><input type="number" value={settings.manual.fat} onChange={e=>updateSettings({...settings, manual: {...settings.manual, fat: +e.target.value}})} className="w-full p-2 rounded-xl border border-emerald-200 font-bold text-lg text-center text-emerald-700 bg-emerald-50"/></div>
+                                                        <div><label className="block text-[10px] font-bold text-blue-600 uppercase mb-1 text-center">{t('pro_label')}</label><input type="number" value={settings.manual.pro} onChange={e=>updateSettings({...settings, manual: {...settings.manual, pro: +e.target.value}})} className="w-full p-2 rounded-xl border border-blue-200 font-bold text-lg text-center text-blue-700 bg-blue-50"/></div>
+                                                        <div><label className="block text-[10px] font-bold text-rose-600 uppercase mb-1 text-center">{t('carb_label')}</label><input type="number" value={settings.manual.carb} onChange={e=>updateSettings({...settings, manual: {...settings.manual, carb: +e.target.value}})} className="w-full p-2 rounded-xl border border-rose-200 font-bold text-lg text-center text-rose-700 bg-rose-50"/></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {!settings.manualMode && (
+                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">{t('weight_now_label')}</label><input type="number" value={settings.weight} onChange={e=>updateSettings({...settings, weight: +e.target.value})} className="w-full p-2 rounded-lg font-bold border"/></div>
+                                                    <div><label className="text-[10px] font-bold text-emerald-500 uppercase">{t('weight_target_label')}</label><input type="number" value={settings.targetWeight || ''} placeholder="Target" onChange={e=>updateSettings({...settings, targetWeight: +e.target.value})} className="w-full p-2 rounded-lg font-bold border border-emerald-200 bg-emerald-50"/></div>
+                                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">{t('height_label')}</label><input type="number" value={settings.height} onChange={e=>updateSettings({...settings, height: +e.target.value})} className="w-full p-2 rounded-lg font-bold border"/></div>
+                                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">{t('age_label')}</label><input type="number" value={settings.age} onChange={e=>updateSettings({...settings, age: +e.target.value})} className="w-full p-2 rounded-lg font-bold border"/></div>
+                                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">{t('gender_label')}</label><select value={settings.gender} onChange={e=>updateSettings({...settings, gender: e.target.value})} className="w-full p-2 rounded-lg font-bold border"><option value="female">{t('female')}</option><option value="male">{t('male')}</option></select></div>
+                                                </div>
+                                                <div><label className="text-[10px] font-bold text-blue-400 uppercase">{t('protein_factor_label', {n: settings.proteinFactor})}</label><input type="range" min="0.8" max="2.5" step="0.1" value={settings.proteinFactor} onChange={e=>updateSettings({...settings, proteinFactor: +e.target.value})} className="w-full accent-blue-500"/></div>
+                                            </div>
+                                        )}
+                                        <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200">
+                                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 text-center">{t('backup_title')}</h4>
+                                            <div className="flex gap-3">
+                                                <button onClick={handleExport} className="flex-1 py-3 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 font-bold rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center gap-1 transition-all"><IconDownload /><span className="text-[10px] uppercase">{t('download_backup')}</span></button>
+                                                <button onClick={triggerImport} className="flex-1 py-3 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 font-bold rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center gap-1 transition-all"><IconUpload /><span className="text-[10px] uppercase">{t('upload_backup')}</span></button>
+                                                <input type="file" ref={fileInputRef} onChange={handleImport} accept="application/json" style={{display: 'none'}} />
+                                            </div>
+                                        </div>
+                                        <button onClick={requestNotificationPermission} className="w-full py-3 bg-yellow-100 text-yellow-800 font-bold rounded-xl flex items-center justify-center gap-2 mt-4 hover:bg-yellow-200 transition-colors"><IconBell className="w-5 h-5"/> {t('enable_notifications')}</button>
+                                        <button onClick={signOut} className="w-full py-3 text-red-500 font-bold bg-red-50 rounded-xl flex items-center justify-center gap-2 mt-4 hover:bg-red-100 transition-colors"><IconLogout/> {t('logout')}</button>
+                                        <button onClick={() => setShowSettings(false)} className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold hover:bg-slate-900 transition-colors">{t('close')}</button>
+                                        
+                                        {/* --- ЮРИДИЧЕСКАЯ ИНФОРМАЦИЯ ДЛЯ WAYFORPAY --- */}
+                                        <div className="mt-6 pt-4 border-t border-slate-200 text-center">
+                                            <p className="text-[10px] text-slate-400 font-medium mb-1 uppercase tracking-widest">Контакти продавця:</p>
+                                            <p className="text-[10px] text-slate-500 leading-tight">
+                                                ФОП ГРОМ ІРИНА ЄВГЕНІВНА<br/>
+                                                ІПН: 3395204482<br/>
+                                                Адреса: 61046, м. Харків, пров. Натієва Олександра, буд. 4<br/>
+                                                Email: business.managerr@gmail.com<br/>
+                                                Тел: +38 067 991 74 14
+                                            </p>
+                                            {/* Removed grayscale and opacity classes to make icons bright by default */}
+                                            <div className="mt-3 flex flex-wrap justify-center items-center gap-4">
+                                                {/* Visa */}
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-3 w-auto" alt="Visa"/>
+                                                {/* Mastercard */}
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-4 w-auto" alt="Mastercard"/>
+                                                {/* Google Pay (Multicolor G + Pay) */}
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" className="h-4 w-auto" alt="Google Pay"/>
+                                                {/* Apple Pay */}
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" className="h-4 w-auto" alt="Apple Pay"/>
+                                                {/* WayForPay (Updated URL) */}
+                                                <img src="https://m.wayforpay.com/images/sidebar/logo_full_dark.png" className="h-5 w-auto object-contain" alt="WayForPay"/>
+                                            </div>
+                                        </div>
+                                        {/* --- КОНЕЦ ЮРИДИЧЕСКОЙ ИНФОРМАЦИИ --- */}
+
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    <div className="fade-in-up">
+                    {/* TOP NAV & DATE */}
+                    <div className="bg-white shadow-sm sticky top-0 z-40 px-3 py-1 rounded-b-3xl relative">
+                        <div className="max-w-md mx-auto">
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex flex-col items-start gap-1"> 
+                                    <div className="flex items-center gap-2 h-8">
+                                        <img src={user?.photoURL || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} className="w-8 h-8 rounded-full border border-slate-200"/>
+                                        <span className="text-xs font-bold text-slate-400 max-w-[100px] truncate leading-none">{user?.displayName || (user?.isAnonymous ? 'Guest' : 'User')}</span>
+                                    </div>
+                                    {/* MODIFIED: Replaced Leaf+Name with iHerb button */}
+                                    <div className="flex items-center gap-1 pl-1">
+                                        <a href={IHERB_AFFILIATE_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-full transition-colors shadow-sm border-2 border-emerald-500 text-xs font-black text-emerald-800 tracking-wide" style={{textDecoration: 'none'}}>
+                                            <span className="text-sm">🌿</span> iHerb
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="flex bg-slate-100 p-1 rounded-full shrink-0 mt-1">
+                                    {/* ИСПРАВЛЕНО: Принудительное использование t() для отображения имени на текущем языке */}
+                                    <button onClick={() => setActiveProfileId('me')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-me ${activeProfileId === 'me' ? 'bg-orange-500 active text-white shadow' : 'text-slate-500'}`}>👩 {t('my_profile')}</button>
+                                    <button onClick={() => handleProfileSwitch('partner')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-partner ${activeProfileId === 'partner' ? 'bg-blue-500 active text-white shadow shadow-blue-200' : 'text-slate-500'}`}>👨 {t('partner_profile')}</button>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0"> 
+                                    <div className="flex items-center gap-2">
+                                        {/* REMOVED: iHerb button was here, moved to left */}
+                                        <button onClick={() => setShowSettings(true)} className="w-8 h-8 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-emerald-600"><IconSettings/></button>
+                                    </div>
+                                    {fastingStats && (<span className="text-[10px] font-bold text-indigo-500 flex items-center gap-1 h-4"><IconClock className="w-3 h-3"/> {t('hunger')}: {formatDuration(fastingStats.hours * 3600 * 1000 + fastingStats.mins * 60 * 1000)}</span>)}
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between bg-slate-50 rounded-lg p-0.5 border border-slate-100 mt-2"> 
+                                <button onClick={()=>changeDate(-1)} className="p-1.5 text-slate-400 hover:text-emerald-600 active:scale-95 transition-transform"><IconChevronLeft/></button>
+                                <div className="relative flex items-center gap-2 px-1">
+                                    <IconCalendar className="text-slate-400 w-4 h-4"/>
+                                    <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">{isSameDay(currentDate.toISOString(), new Date()) ? `${t('today')}, ${formatDisplayDate(currentDate, uiLang)}` : formatDisplayDate(currentDate, uiLang)}</span>
+                                    <input type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" onChange={handleDateInput} value={formatDate(currentDate)}/>
+                                </div>
+                                <button onClick={()=>changeDate(1)} className="p-1.5 text-slate-400 hover:text-emerald-600 active:scale-95 transition-transform"><IconChevronRight/></button>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-1.5 select-none mt-2">
+                                <div className={`py-4 px-1 min-h-[90px] rounded-xl border text-center relative overflow-hidden ${dailyTotal.cal > targets.cal ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'}`}>
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <span className={`text-[12px] font-bold uppercase mb-0.5 ${dailyTotal.cal > targets.cal ? 'text-red-800' : 'text-orange-800'}`}>{t('cal_short')} {getSmiley(dailyTotal.cal, targets.cal)}</span>
+                                        <span className={`text-xl font-black leading-none ${dailyTotal.cal > targets.cal ? 'text-red-600' : 'text-orange-600'}`}>{dailyTotal.cal}<span className="text-[10px] font-bold opacity-60 block mt-0.5">/ {targets.cal}</span></span>
+                                        <span className={`text-[10px] font-bold mt-1 ${dailyTotal.cal > targets.cal ? 'text-red-700' : 'text-slate-600'}`}>{t('remaining')}: {targets.cal - dailyTotal.cal}</span>
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${dailyTotal.cal > targets.cal ? 'bg-red-500' : 'bg-orange-400'}`} style={{width: `${Math.min((dailyTotal.cal/targets.cal)*100, 100)}%`}}></div>
+                                </div>
+                                <div className="bg-blue-50 py-4 px-1 min-h-[90px] rounded-xl border border-blue-100 text-center relative overflow-hidden">
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <span className="text-[12px] text-blue-800 font-bold uppercase flex items-center gap-0.5">{t('pro_short')} {getSmiley(dailyTotal.pro, targets.pro)}</span>
+                                        <span className="text-xl font-black text-blue-600 leading-none mt-0.5">{dailyTotal.pro}<span className="text-[10px] font-bold opacity-60 block mt-0.5">/ {targets.pro}</span></span>
+                                        <span className="text-[10px] font-bold mt-1 text-blue-700/70">{t('remaining')}: {targets.pro - dailyTotal.pro}</span>
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${dailyTotal.pro > targets.pro ? 'bg-red-500' : 'bg-blue-500'}`} style={{width: `${Math.min((dailyTotal.pro/targets.pro)*100, 100)}%`}}></div>
+                                </div>
+                                <div className="bg-emerald-50 py-4 px-1 min-h-[90px] rounded-xl border border-emerald-100 text-center relative overflow-hidden">
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <span className="text-[12px] text-emerald-800 font-bold uppercase flex items-center gap-0.5">{t('fat_short')} {getSmiley(dailyTotal.fat, targets.fat)}</span>
+                                        <span className="text-xl font-black text-emerald-600 leading-none mt-0.5">{dailyTotal.fat}<span className="text-[10px] font-bold opacity-60 block mt-0.5">/ {targets.fat}</span></span>
+                                        <span className="text-[10px] font-bold mt-1 text-emerald-700/70">{t('remaining')}: {targets.fat - dailyTotal.fat}</span>
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${dailyTotal.fat > targets.fat ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${Math.min((dailyTotal.fat/targets.fat)*100, 100)}%`}}></div>
+                                </div>
+                                <div className="bg-rose-50 py-4 px-1 min-h-[90px] rounded-xl border border-rose-100 text-center relative overflow-hidden">
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <span className="text-[10px] text-rose-800 font-bold uppercase mb-0.5 leading-tight flex items-center gap-0.5 text-center whitespace-pre-line">{t('net_carb_short_main')} {getSmiley(netCarbs, targets.carb)}</span>
+                                        <span className={`text-xl font-black leading-none mt-0.5 ${netCarbs > targets.carb ? 'text-red-600' : 'text-rose-600'}`}>{netCarbs}<span className="text-[10px] font-bold opacity-60 block mt-0.5">/ {targets.carb}</span></span>
+                                        <span className={`text-[10px] font-bold mt-1 ${netCarbs > targets.carb ? 'text-red-700' : 'text-slate-600'}`}>{t('remaining')}: {targets.carb - netCarbs}</span>
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${netCarbs > targets.carb ? 'bg-red-600' : 'bg-rose-500'}`} style={{width: `${Math.min((netCarbs/targets.carb)*100, 100)}%`}}></div>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                {/* Weight Card */}
+                                <div className={`border rounded-xl p-2 transition-all duration-300 card-style ${activeProfileId === 'me' ? 'bg-orange-50/50 border-orange-100' : 'bg-blue-50/50 border-blue-100'}`}>
+                                    <button onClick={() => setIsWeightExpanded(!isWeightExpanded)} className="w-full flex items-center justify-between text-left">
+                                        <div className="flex flex-col gap-0 w-full">
+                                            <div className="flex items-center gap-2">
+                                                <IconScale className={`w-4 h-4 ${activeProfileId === 'partner' ? 'text-blue-500' : 'text-orange-500'}`}/>
+                                                <span className={`text-xs font-bold ${activeProfileId === 'partner' ? 'text-blue-800' : 'text-slate-600'}`}>{t('weight_now_label')}</span>
+                                            </div>
+                                            {weightStats && (
+                                                <div className={`flex flex-col gap-0 text-[10px] font-bold mt-1 ${activeProfileId === 'partner' ? 'text-blue-900' : 'text-slate-800'}`}>
+                                                    <span className="text-sm">{weightStats.current}kg</span>
+                                                    {parseFloat(weightStats.totalChange) < 0 && (<span className={`text-emerald-600`}>({t('left_shed', {n: Math.abs(weightStats.totalChange)})})</span>)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <svg className={`w-4 h-4 transition-transform ml-auto shrink-0 ${isWeightExpanded ? 'rotate-180' : 'rotate-0'} ${activeProfileId === 'partner' ? 'text-blue-500' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    <div className={`collapsible ${isWeightExpanded ? 'expanded' : ''}`}>
+                                        <button onClick={() => { setWeighModal(true); setWeightDate(formatDate(currentDate)); }} className={`w-full flex items-center justify-center gap-2 bg-white py-1.5 rounded-lg text-xs font-bold shadow-sm border mt-2 ${activeProfileId === 'partner' ? 'text-blue-600 border-blue-200 hover:bg-blue-50' : 'text-orange-600 border-orange-200 hover:bg-orange-50'}`}>{t('weight_save_btn')}</button>
+                                        <WeightChart logs={weightLog} activeProfileId={activeProfileId}/>
+                                        {weightStats ? (
+                                            <div className="mt-1 space-y-0.5">
+                                                {Math.abs(parseFloat(weightStats.leftToTarget)) > 0.1 ? (
+                                                    <div className={`text-center pt-0.5 border-t ${activeProfileId === 'partner' ? 'border-blue-100/50' : 'border-orange-100/50'}`}>
+                                                        <span className={`text-[8px] font-bold ${parseFloat(weightStats.leftToTarget) > 0 ? (activeProfileId === 'partner' ? 'text-blue-500' : 'text-orange-500') : (parseFloat(weightStats.leftToTarget) < 0 ? 'text-red-500' : 'text-emerald-500')}`}>
+                                                            {parseFloat(weightStats.leftToTarget) > 0 ? `${t('left_to_lose')} ${weightStats.leftToTarget} kg` : `${t('left_to_gain')} ${Math.abs(weightStats.leftToTarget)} kg`}
+                                                        </span>
+                                                    </div>
+                                                ) : (<div className="text-center pt-0.5 border-t border-emerald-100"><span className="text-[8px] font-bold text-emerald-500">{t('target_reached') || "Цель достигнута! 🎉"}</span></div>)}
+                                                
+                                                {weightStats.weeklyHistory.length > 0 && (<div className="mt-4 pb-1 text-[8px] font-bold uppercase text-slate-500 border-b border-slate-100">{t('weekly_progress_title')}</div>)}
+                                                {weightStats.weeklyHistory.map((week) => (
+                                                    <div key={week.id} className={`flex justify-between items-center text-[8px] font-bold uppercase pb-0.5 ${activeProfileId === 'partner' ? 'text-blue-400 border-b border-blue-100' : 'text-slate-400 border-b border-orange-100'}`}>
+                                                        <span className="w-1/2">{week.startDate} - {week.endDate}</span>
+                                                        <span className={`text-xs font-black w-1/4 text-right ${parseFloat(week.change) > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{parseFloat(week.change) > 0 ? '+' : ''}{week.change} kg</span>
+                                                    </div>
+                                                ))}
+                                                {weightStats.start && (
+                                                    <div className={`flex justify-between items-center pt-0.5 border-b pb-0.5 mt-2 ${activeProfileId === 'partner' ? 'text-blue-400 border-blue-100' : 'text-slate-400 border-orange-100'}`}>
+                                                        <span>{t('progress_days', {n: weightStats.days})}</span>
+                                                        <span className={`text-xs font-black ${parseFloat(weightStats.totalChange) > 0 ? 'text-red-500' : (activeProfileId === 'partner' ? 'text-blue-500' : 'text-orange-500')}`}>{parseFloat(weightStats.totalChange) > 0 ? '+' : ''}{weightStats.totalChange} kg</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between items-center pt-0.5">
+                                                    <div className="flex flex-col"><span className={`text-[7px] ${activeProfileId === 'partner' ? 'text-blue-500' : 'text-slate-500'}`}>{t('current')}</span><span className={`text-sm font-black ${activeProfileId === 'partner' ? 'text-blue-800' : 'text-slate-800'}`}>{weightStats.current}</span></div>
+                                                    <div className="flex flex-col items-end"><span className={`text-[7px] ${activeProfileId === 'partner' ? 'text-blue-500' : 'text-orange-500'}`}>{t('target')}</span><span className={`text-sm font-black ${activeProfileId === 'partner' ? 'text-blue-600' : 'text-orange-600'}`}>{weightStats.target}</span></div>
+                                                </div>
+                                            </div>
+                                        ) : (<div className="text-[8px] text-center text-slate-400 mt-1.5">1+ entry needed</div>)}
+                                    </div>
+                                </div>
+
+                                {/* Water Card */}
+                                <div className={`border rounded-xl p-2 transition-all duration-300 card-style ${activeProfileId === 'me' ? 'bg-cyan-50/50 border-cyan-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                                    <button onClick={() => setIsWaterExpanded(!isWaterExpanded)} className="w-full flex items-center justify-between text-left">
+                                        <div className="flex flex-col gap-0 w-full">
+                                            <div className="flex items-center gap-2">
+                                                <IconGlass className={`w-4 h-4 ${activeProfileId === 'partner' ? 'text-emerald-500' : 'text-cyan-500'}`}/>
+                                                <span className={`text-xs font-bold ${activeProfileId === 'partner' ? 'text-emerald-800' : 'text-slate-600'}`}>H2O</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className={`flex items-center text-[10px] font-black shrink-0 ${activeProfileId === 'partner' ? 'text-emerald-600' : 'text-cyan-600'}`}>{drankCups}/{targetCups} {t('cups_short')}</div>
+                                                {settings.remindersEnabled && waterLog.filter(w => isSameDay(w.date, now)).length > 0 && nextDrinkTime && dailyWater < (settings.waterTarget || 2000) && (
+                                                    <div className={`text-[10px] font-bold ml-auto shrink-0 flex items-center ${activeProfileId === 'partner' ? 'text-emerald-800' : 'text-cyan-800'}`}>
+                                                        <IconClock className="w-3 h-3 inline-block mr-1"/>{nextDrinkTime.isOverdue ? t('time_to_drink') : `${String(nextDrinkTime.hours).padStart(2, '0')}${t('hour_short')} ${String(nextDrinkTime.minutes).padStart(2, '0')}${t('min_short')}`}
+                                                    </div>
+                                                )}
+                                                {dailyWater >= (settings.waterTarget || 2000) && <IconCheck className='w-4 h-4 text-emerald-600 ml-auto' />}
+                                            </div>
+                                        </div>
+                                        <svg className={`w-4 h-4 transition-transform ml-2 shrink-0 ${isWaterExpanded ? 'rotate-180' : 'rotate-0'} ${activeProfileId === 'partner' ? 'text-emerald-500' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    <div className={`collapsible ${isWaterExpanded ? 'expanded' : ''}`}>
+                                        <div className="flex flex-wrap gap-0.5 justify-center mt-2">
+                                            {Array.from({ length: targetCups }).map((_, i) => {
+                                                const isFilled = (i + 1) * cupVol <= dailyWater;
+                                                return (
+                                                    <button key={i} onClick={() => toggleWaterCup(i)} className={`transition-all duration-300 active:scale-90 ${activeProfileId === 'partner' ? (isFilled ? 'text-blue-600 drop-shadow-md scale-100 water-icon-active' : 'text-slate-300 hover:text-blue-400 water-icon-inactive') : (isFilled ? 'text-cyan-500 drop-shadow-md scale-100 water-icon-active' : 'text-slate-300 hover:text-cyan-300 water-icon-inactive')}`}><IconGlass className={`w-5 h-5 ${isFilled ? 'fill-current' : ''}`} /></button>
+                                                )
+                                            })}
+                                        </div>
+                                        <div className={`flex flex-col items-center pt-2 border-t mt-2 ${activeProfileId === 'partner' ? 'border-emerald-200/50' : 'border-cyan-200/50'}`}>
+                                            <span className={`text-xs font-black ${activeProfileId === 'partner' ? 'text-emerald-600' : 'text-cyan-600'}`}>{dailyWater}/{settings.waterTarget || 2000} ml</span>
+                                            {dailyWater >= (settings.waterTarget || 2000) && <span className='text-[10px] text-green-600 font-bold mt-0.5 flex items-center gap-1'><IconCheck className="w-3 h-3"/> Цель достигнута!</span>}
+                                            {settings.remindersEnabled && waterLog.filter(w => isSameDay(w.date, now)).length > 0 && nextDrinkTime && dailyWater < (settings.waterTarget || 2000) && (
+                                                <div className={`text-[10px] font-bold mt-2 flex items-center ${activeProfileId === 'partner' ? 'text-emerald-800' : 'text-cyan-800'}`}>
+                                                    <IconClock className="w-3 h-3 inline-block mr-1"/>{nextDrinkTime.isOverdue ? t('time_to_drink') : `${String(nextDrinkTime.hours).padStart(2, '0')}${t('hour_short')} ${String(nextDrinkTime.minutes).padStart(2, '0')}${t('min_short')}`}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-md mx-auto p-4 space-y-3">
+                        <div className={`flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 card-style search-menu-toggle ${searchTerm && activeTab === 'diary' ? 'hidden' : ''}`}>
+                            <button onClick={() => setActiveTab('diary')} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'diary' ? 'bg-slate-800 text-white shadow-md btn-primary' : 'text-slate-400 hover:bg-slate-50'}`}><IconUtensils /> {t('diary')}</button>
+                            {activeProfileId === 'me' && (<button onClick={() => { setActiveTab('create'); setEditingId(null); setNewFood({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }); }} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'create' ? 'bg-indigo-600 text-white shadow-md btn-secondary' : 'text-slate-400 hover:bg-slate-50'}`}><IconChefHat /> {t('recipe')}</button>)}
+                        </div>
+                        
+                        {activeTab === 'diary' && (
+                            <div className="space-y-3 fade-in-up">
+                                <div ref={searchRef} className="bg-white p-2 rounded-3xl shadow-lg border border-emerald-100 relative z-[30] max-w-full mx-auto card-style accent-border"> 
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><IconSearch className="w-4 h-4"/></div>
+                                        <input type="text" placeholder={t('search_placeholder')} value={searchTerm} onChange={(e) => { 
+                                            const val = e.target.value;
+                                            setSearchTerm(val); 
+                                            setSelectedFood(null); 
+                                            setSearchViewingRecipeId(null); 
+                                        }} className="w-full pl-12 pr-10 py-1 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-200 transition-all text-sm"/>
+                                        {searchTerm && <button onClick={()=>{setSearchTerm(''); setSelectedFood(null)}} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-400"><IconClear className="w-4 h-4"/></button>}
+                                        {searchTerm && !selectedFood && (
+                                            <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-64 overflow-y-auto divide-y divide-slate-50 z-[100]">
+                                                {customFoods.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
+                                                    <div key={item.id}>
+                                                        <div onClick={() => { setSelectedFood(item); setSearchTerm(item.name); setSearchViewingRecipeId(null); }} className="p-4 hover:bg-emerald-50 cursor-pointer flex justify-between items-start group">
+                                                            <div className="flex items-start gap-3 flex-1 overflow-hidden">
+                                                                <div className="text-2xl pt-2">{item.icon || '🍽️'}</div> 
+                                                                <div className="flex-1 min-w-0"><div className="font-bold text-slate-700 leading-tight">{item.name}</div><FoodInfoDisplay item={{...item, grams: null}} t={t} /></div>
+                                                            </div>
+                                                            <div className="flex gap-2 shrink-0 pt-2">
+                                                                {item.recipe && <button type="button" onClick={(e) => toggleRecipeViewInList(e, item.id)} className={`p-2 rounded-lg transition-colors ${searchViewingRecipeId === item.id ? 'bg-purple-100 text-purple-600' : 'bg-slate-200 text-slate-400 hover:text-purple-500'}`}><IconBook className="w-4 h-4"/></button>}
+                                                                {item.isCustom && activeProfileId === 'me' && (<button type="button" onClick={(e) => startEditCustomFood(e, item)} className="text-slate-300 hover:text-indigo-500 p-2 bg-slate-50 rounded-lg"><IconEdit className="w-4 h-4"/></button>)}
+                                                            </div>
+                                                        </div>
+                                                        {searchViewingRecipeId === item.id && item.recipe && <div className="px-4 pb-3 pt-0 text-xs text-slate-600 bg-slate-50 border-t border-slate-100 whitespace-pre-wrap">{item.recipe.replace(/\\n/g, '\n')}</div>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {selectedFood && (
+                                        <div className="mt-4 pt-4 border-t border-dashed border-slate-100 scale-in">
+                                            <FoodInfoDisplay item={{...selectedFood, grams: null}} t={t} />
+                                            {selectedFood.recipe && <div className="flex justify-end mt-4 mb-2"><button onClick={()=>setShowRecipe(!showRecipe)} className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg hover:bg-indigo-100">{showRecipe ? t('hide_recipe') : t('show_recipe')}</button></div>}
+                                            {showRecipe && <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg mb-3 whitespace-pre-wrap">{selectedFood.recipe.replace(/\\n/g, '\n')}</div>}
+                                            <div className="flex gap-2 mt-4">
+                                                <input 
+                                                    type="number" 
+                                                    placeholder={t('gram_placeholder')} 
+                                                    value={gramInput} 
+                                                    onChange={e=>{
+                                                        setGramInput(e.target.value);
+                                                        setSearchTerm(selectedFood.name); 
+                                                    }} 
+                                                    ref={gramInputRef} 
+                                                    className="flex-1 bg-slate-50 rounded-xl px-4 font-bold text-xl outline-none border-2 border-transparent focus:border-emerald-200" 
+                                                    inputMode="decimal"
+                                                />
+                                                <button onClick={addToLog} disabled={!gramInput} className="bg-emerald-500 hover:bg-emerald-600 btn-primary text-white px-6 rounded-xl shadow-lg shadow-emerald-200 transition-transform active:scale-95 shrink-0"><IconPlus /></button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="relative z-0">
+                                    <div className="flex justify-between items-center px-2 mb-2">
+                                        <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest">{t('eaten_title')}</h3>
+                                        <div className="flex gap-2">
+                                            {todayLogWithFasting.length > 0 && (<button onClick={openShoppingList} className="flex items-center gap-1 text-xs font-bold text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors"><IconList className="w-4 h-4"/> {t('list_btn')}</button>)}
+                                            <button onClick={copyYesterday} className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors" title={t('yesterday_btn')}><IconCopyDay className="w-4 h-4"/> {t('yesterday_btn')}</button>
+                                            <button onClick={copyRemaining} className="flex items-center gap-1 text-xs font-bold text-emerald-600 accent-text bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-colors" title={t('report_btn')}><IconCopy className="w-4 h-4"/> {t('report_btn')}</button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 pb-20">
+                                        {todayLogWithFasting.length === 0 && <div className="text-center text-slate-400 py-10 text-sm">{t('empty_log')}</div>}
+                                        {todayLogWithFasting.map(item => {
+                                            const time = formatTime(item.date);
+                                            const fastingDuration = formatDuration(item.fasting.ms);
+                                            return (
+                                            <div key={item.id} className="bg-white p-3 rounded-2xl border border-slate-50 shadow-sm flex justify-between items-start scale-in card-style">
+                                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                    <span className="text-2xl pt-2">{item.icon || '🍽️'}</span> 
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-slate-700 leading-tight">{item.name}</div>
+                                                        <div className="flex gap-3 text-[10px] font-bold mt-1 mb-1"><span className="text-indigo-500 flex items-center gap-0.5"><IconClock className="w-3 h-3"/> {t('meal_time')}: {time}</span>{item.fasting.ms > 60000 && (<span className="text-slate-500">{t('fast_before')}: {fastingDuration}</span>)}</div>
+                                                        <FoodInfoDisplay item={item} t={t} /> 
+                                                    </div>
