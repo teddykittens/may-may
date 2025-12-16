@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Keto Diary</title>
     
+    <!-- === ВАЖНО: ПОДКЛЮЧЕНИЕ MANIFEST.JSON === -->
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Keto Diary">
@@ -13,11 +16,15 @@
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
     <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
 
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Barcode Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
+    <!-- FIREBASE (Compatible Version) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -31,7 +38,54 @@
             transition: background-color 0.3s ease;
         }
         
-        /* ERROR BOX STYLE */
+        /* --- СТИЛЬ КНОПКИ УСТАНОВКИ (ANDROID) --- */
+        #installAppBtn {
+            display: none; /* Скрыта, пока браузер не разрешит */
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5);
+            font-weight: bold;
+            font-size: 15px;
+            border: 2px solid rgba(255,255,255,0.2);
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+            animation: pulseBtn 2s infinite;
+            cursor: pointer;
+        }
+        @keyframes pulseBtn {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        /* --- СТИЛЬ ПОДСКАЗКИ ДЛЯ IPHONE (iOS) --- */
+        #iosInstallPrompt {
+            display: none; /* Скрыта по умолчанию */
+            position: fixed;
+            bottom: 20px;
+            left: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 9999;
+            border: 1px solid #e2e8f0;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.5s ease-out;
+        }
+        .ios-close { position: absolute; top: 10px; right: 10px; color: #94a3b8; background: none; border: none; font-size: 20px; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Остальные стили */
         #error-display {
             display: none;
             position: fixed;
@@ -116,7 +170,6 @@
         .partner-active .profile-btn-me.active { background-color: #fdba74 !important; color: white !important; }
         .partner-active .profile-btn-partner.active { background-color: #ffffff !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
         
-        /* New styles for controlled visibility */
         .search-menu-toggle {
             transition: all 0.2s ease-in-out;
         }
@@ -131,9 +184,36 @@
             margin-bottom: 0 !important;
             pointer-events: none;
         }
+        
+        @media (max-width: 767px) {
+            .fullscreen-modal-content {
+                height: 100%;
+                border-radius: 0;
+            }
+        }
     </style>
 </head>
 <body id="body-tag">
+    
+    <!-- === НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ УСТАНОВКИ === -->
+    
+    <!-- 1. Кнопка для Android (Скрыта по умолчанию) -->
+    <button id="installAppBtn">📲 Установить приложение</button>
+    
+    <!-- 2. Подсказка для iOS (iPhone) -->
+    <div id="iosInstallPrompt">
+        <button class="ios-close" onclick="document.getElementById('iosInstallPrompt').style.display='none'">&times;</button>
+        <div class="flex items-start gap-4">
+            <img src="https://cdn-icons-png.flaticon.com/512/706/706164.png" class="w-12 h-12 rounded-xl shadow-sm">
+            <div class="text-sm text-slate-700">
+                <p class="font-bold text-slate-900 mb-1">Установите Keto Diary</p>
+                <p>Нажмите <span class="font-bold text-blue-600 text-lg">Поделиться</span> <svg class="inline w-5 h-5 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></p>
+                <p>и выберите <span class="font-bold">"На экран «Домой»"</span> ⊞</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ERROR LOGGER -->
     <div id="error-display"></div>
     <script>
         window.onerror = function(message, source, lineno, colno, error) {
@@ -208,7 +288,7 @@
         const IconGoogle = () => <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
         const IconSettings = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
         const IconUtensils = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>;
-        const IconChefHat = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
+        const IconChefHat = (props) => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
         const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
         const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
         const IconSave = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
@@ -233,6 +313,7 @@
         const IconCopyDay = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
         const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>;
         const IconBell = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>;
+        const IconBarcode = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>;
 
         const DEFAULT_SETTINGS = { 
             weight: 70, height: 170, age: 30, gender: 'female', activity: 1.2, proteinFactor: 1.2,
@@ -246,7 +327,6 @@
 
         const TRANSLATIONS = {
             ru: {
-                // ИСПРАВЛЕНО: Теперь User 1 / User 2
                 my_profile: "User 1", partner_profile: "User 2", diary: "Меню", recipe: "Рецепт", settings_title: "Настройки", name_label: "Имя",
                 water_target_label: "Цель по воде (мл)", cup_volume_label: "Объем одного стакана (мл)", manual_mode_label: "Вручну (Свои БЖУ)",
                 max_cal_label: "Максимум Калорий (ккал)", fat_label: "Жиры (г)", pro_label: "Белки (г)", carb_label: "Общ. Угли (г)",
@@ -291,7 +371,9 @@
                 ask_gemini: "✨ Спросить у Gemini",
                 ask_chatgpt: "🤖 Спросить у ChatGPT",
                 copied_hint: "Скопировано! Открываю сайт...",
-                enter_name_warning: "Введите название продукта!"
+                enter_name_warning: "Введите название продукта!",
+                recipe_name: "Название", recipe_ingredients: "Ингредиенты",
+                scan_barcode: "Сканировать штрих-код", scanning: "Сканирую...", product_found: "Продукт найден!", product_not_found: "Продукт не найден",
             },
             en: {
                 my_profile: "User 1", partner_profile: "User 2", diary: "Menu", recipe: "Recipe", settings_title: "Settings", name_label: "Name",
@@ -336,7 +418,9 @@
                 ask_gemini: "✨ Ask Gemini",
                 ask_chatgpt: "🤖 Ask ChatGPT",
                 copied_hint: "Copied! Opening site...",
-                enter_name_warning: "Enter food name!"
+                enter_name_warning: "Enter food name!",
+                recipe_name: "Name", recipe_ingredients: "Ingredients",
+                scan_barcode: "Scan Barcode", scanning: "Scanning...", product_found: "Product found!", product_not_found: "Product not found",
             },
             uk: {
                 my_profile: "User 1", partner_profile: "User 2", diary: "Меню", recipe: "Рецепт", settings_title: "Налаштування", name_label: "Ім'я",
@@ -358,7 +442,7 @@
                 close_btn: "Закрити", login_google: "Увійти через Google", login_guest: "Увійти як гість", loading: "Завантаження...",
                 error_save: "Помилка збереження", backup_downloaded: "Резервну копію завантажено!", data_restored: "Дані відновлено!",
                 data_loaded: "Дані завантажено (локально)!", invalid_file: "Невірний формат файлу", error_read: "Помилка читання файлу",
-                yesterday_empty: "Вчора не було записів", copied_n_entries: "Скопійовано {n} записів!", shopping_list_header: "🛒 Список покупок ({date}):\n\n",
+                yesterday_empty: "Вчера не было записей", copied_n_entries: "Скопійовано {n} записів!", shopping_list_header: "🛒 Список покупок ({date}):\n\n",
                 report_header: "👤 {name} | {date}\n", report_summary: "📊 ЗВЕДЕННЯ:\n", report_menu: "🍽 МЕНЮ:\n", net_carbs: "Чисті\nВуглі",
                 remaining: "Зал", over: "⚠️ Перебір", fiber_day: "Клітковина за день", fiber_card_label: "Клітковина",
                 left_shed: "Скинуто: {n} кг", left_gain: "Набрано: {n} кг", left_to_lose: "Залишилось скинути", left_to_gain: "Потрібно набрати",
@@ -382,7 +466,9 @@
                 ask_gemini: "✨ Спитати Gemini",
                 ask_chatgpt: "🤖 Спитати ChatGPT",
                 copied_hint: "Скопійовано! Відкриваю сайт...",
-                enter_name_warning: "Введіть назву продукту!"
+                enter_name_warning: "Введіть назву продукту!",
+                recipe_name: "Назва", recipe_ingredients: "Інгредієнти",
+                scan_barcode: "Сканувати штрих-код", scanning: "Сканую...", product_found: "Продукт знайдено!", product_not_found: "Продукт не знайдено",
             }
         };
 
@@ -436,42 +522,63 @@
         };
         // --- END REUSABLE COMPONENT ---
         
-        // --- NEW: RecipeModal Component ---
-        const RecipeModal = ({ isOpen, closeModal, recipe, saveRecipe, deleteRecipe, t, activeProfileId }) => {
-            if (!isOpen || !recipe) return null;
+        // --- NEW: RecipeModal Component (Unified View & Edit) ---
+        const RecipeModal = ({ isOpen, closeModal, modalData, saveRecipe, deleteRecipe, t, activeProfileId }) => {
+            if (!isOpen || !modalData) return null;
 
+            const { item: recipe, mode: initialMode } = modalData;
+            const [mode, setMode] = useState(initialMode || 'view');
             const [localFood, setLocalFood] = useState({ 
                 name: recipe.name, 
                 recipe: (recipe.recipe || '').replace(/\\n/g, '\n'), 
-                cal: recipe.cal, 
-                pro: recipe.pro, 
-                fat: recipe.fat, 
-                carb: recipe.carb, 
-                fiber: recipe.fiber || 0 
+                cal: recipe.cal || '', 
+                pro: recipe.pro || '', 
+                fat: recipe.fat || '', 
+                carb: recipe.carb || '', 
+                fiber: recipe.fiber || ''
             });
+            const [isScanning, setIsScanning] = useState(false);
+
+            // Sync state if recipe changes
+            useEffect(() => {
+                setLocalFood({ 
+                    name: recipe.name, 
+                    recipe: (recipe.recipe || '').replace(/\\n/g, '\n'), 
+                    cal: recipe.cal || '', 
+                    pro: recipe.pro || '', 
+                    fat: recipe.fat || '', 
+                    carb: recipe.carb || '', 
+                    fiber: recipe.fiber || ''
+                });
+                setMode(initialMode || 'view');
+            }, [recipe, initialMode]);
 
             const handleChange = (e) => {
                 const { name, value, type } = e.target;
                 setLocalFood(prev => ({
                     ...prev,
-                    [name]: type === 'number' ? parseFloat(value) || '' : value
+                    [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value
                 }));
             };
 
             const handleSave = () => {
                 const foodObj = { 
-                    ...recipe, // Preserve original properties like id, isCustom
+                    ...recipe, 
                     name: localFood.name, 
                     recipe: localFood.recipe, 
-                    pro: +localFood.pro, 
-                    fat: +localFood.fat, 
-                    carb: +localFood.carb, 
-                    fiber: +localFood.fiber, 
-                    cal: +localFood.cal 
+                    pro: +localFood.pro || 0, 
+                    fat: +localFood.fat || 0, 
+                    carb: +localFood.carb || 0, 
+                    fiber: +localFood.fiber || 0, 
+                    cal: +localFood.cal || 0,
+                    isCustom: true
                 };
-                if (!localFood.name || !localFood.cal) return;
+                if (!localFood.name || !localFood.cal) {
+                    window.showToast(t('enter_name_warning'), "error"); 
+                    return;
+                }
                 saveRecipe(foodObj);
-                closeModal();
+                // closeModal(); // <--- УБРАЛИ ЗАКРЫТИЕ ОКНА
             };
             
             const handleDelete = () => {
@@ -479,98 +586,174 @@
                 closeModal();
             };
 
+            const handleAiClick = (e, foodName) => {
+                if (!foodName) {
+                    e.preventDefault(); 
+                    window.showToast(t('enter_name_warning'), "error"); 
+                    return;
+                }
+                const text = `КБЖУ и клетчатка на 100 г продукта: ${foodName}`;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => window.showToast(t('copied_hint'), "success"))
+                        .catch(err => { if (window.copyToClipboardFallback(text)) window.showToast(t('copied_hint'), "success"); });
+                } else {
+                    if (window.copyToClipboardFallback(text)) window.showToast(t('copied_hint'), "success");
+                }
+            };
+
+            // --- SCANNER LOGIC ---
+            useEffect(() => {
+                let html5QrcodeScanner;
+                if (isScanning) {
+                    html5QrcodeScanner = new Html5Qrcode("reader");
+                    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                    
+                    html5QrcodeScanner.start({ facingMode: "environment" }, config, 
+                        (decodedText, decodedResult) => {
+                            // Success callback
+                            console.log(`Scan result: ${decodedText}`, decodedResult);
+                            html5QrcodeScanner.stop().then(() => {
+                                setIsScanning(false);
+                                fetchProductData(decodedText);
+                            }).catch(err => console.error("Failed to stop scanner", err));
+                        },
+                        (errorMessage) => {
+                            // Error callback (ignore frequent errors)
+                        }
+                    ).catch(err => {
+                        console.error("Error starting scanner", err);
+                        setIsScanning(false);
+                        window.showToast("Camera error", "error");
+                    });
+                }
+
+                return () => {
+                    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+                        html5QrcodeScanner.stop().catch(err => console.error("Cleanup stop failed", err));
+                    }
+                };
+            }, [isScanning]);
+
+            const fetchProductData = async (barcode) => {
+                window.showToast(t('scanning'));
+                try {
+                    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+                    const data = await response.json();
+                    
+                    if (data.status === 1) {
+                        const p = data.product;
+                        const nutriments = p.nutriments;
+                        
+                        setLocalFood(prev => ({
+                            ...prev,
+                            name: p.product_name || prev.name,
+                            cal: nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0,
+                            pro: nutriments.proteins_100g || nutriments.proteins || 0,
+                            fat: nutriments.fat_100g || nutriments.fat || 0,
+                            carb: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
+                            fiber: nutriments.fiber_100g || nutriments.fiber || 0
+                        }));
+                        window.showToast(t('product_found'));
+                    } else {
+                        window.showToast(t('product_not_found'), "error");
+                    }
+                } catch (error) {
+                    console.error("API Error", error);
+                    window.showToast("API Error", "error");
+                }
+            };
+
             const isPartner = activeProfileId === 'partner';
             
             return (
                 <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-0">
-                    <div className="bg-white rounded-t-3xl md:rounded-3xl p-6 w-full h-full md:max-w-xl md:max-h-[90vh] shadow-2xl scale-in flex flex-col">
-                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4 shrink-0">
-                            <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2"><IconChefHat/> {t('edit_recipe_title')}</h3>
-                            <button onClick={closeModal} className="bg-slate-100 p-2 rounded-full text-slate-500 hover:bg-slate-200"><IconX /></button>
-                        </div>
-                        <div className="overflow-y-auto space-y-4 flex-1 pb-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('name_placeholder')}</label>
-                                <input type="text" name="name" placeholder={t('name_placeholder')} value={localFood.name} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800"/>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('ingredients_placeholder')}</label>
-                                <textarea name="recipe" placeholder={t('ingredients_placeholder')} value={localFood.recipe} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-medium text-sm h-36 resize-none border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800"></textarea>
-                            </div>
-                            
-                            <div className="bg-slate-50 p-4 rounded-xl">
-                                <div className="text-center text-xs font-bold text-slate-400 mb-2 uppercase">{t('per_100g')}</div>
-                                <div className="grid grid-cols-5 gap-2">
-                                    {/* CAL */}
-                                    <input type="number" name="cal" placeholder="0" value={localFood.cal} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-xs"/>
-                                    {/* PRO */}
-                                    <input type="number" name="pro" placeholder="0" value={localFood.pro} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-blue-600 bg-blue-50 text-xs"/>
-                                    {/* FAT */}
-                                    <input type="number" name="fat" placeholder="0" value={localFood.fat} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-emerald-600 bg-emerald-50 text-xs"/>
-                                    {/* CARB */}
-                                    <input type="number" name="carb" placeholder="0" value={localFood.carb} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-rose-600 bg-rose-50 text-xs"/>
-                                    {/* FIBER */}
-                                    <input type="number" name="fiber" placeholder="0" value={localFood.fiber} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-purple-600 bg-purple-50 text-xs"/>
+                    <div className="bg-white rounded-t-3xl md:rounded-3xl p-6 w-full h-full md:max-w-xl md:max-h-[90vh] shadow-2xl scale-in flex flex-col fullscreen-modal-content">
+                        
+                        {/* --- VIEW MODE --- */}
+                        {mode === 'view' ? (
+                            <>
+                                <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4 shrink-0">
+                                    <h3 className="font-black text-2xl text-slate-800 leading-tight pr-4">{localFood.name}</h3>
+                                    <button onClick={closeModal} className="bg-slate-100 p-2 rounded-full text-slate-500 hover:bg-slate-200 shrink-0"><IconX /></button>
                                 </div>
-                                <div className="grid grid-cols-5 gap-2 mt-1 text-center text-[10px] font-bold text-slate-500 uppercase">
-                                    <div className="text-slate-400">{t('cal_short')}</div><div className="text-blue-600">{t('pro_short')}</div><div className="text-emerald-600">{t('fat_short')}</div><div className="text-rose-600">{t('carb_short')}</div><div className="text-purple-600">{t('fiber_short')}</div>
+                                <div className="overflow-y-auto space-y-6 flex-1 pb-4">
+                                    <div className="grid grid-cols-5 gap-2 text-center select-none">
+                                        <div className="bg-orange-50 p-2 rounded-xl border border-orange-100"><div className="text-[10px] font-bold text-orange-400 uppercase mb-1">{t('cal_short')}</div><div className="font-black text-lg text-orange-600">{formatNum(localFood.cal)}</div></div>
+                                        <div className="bg-blue-50 p-2 rounded-xl border border-blue-100"><div className="text-[10px] font-bold text-blue-400 uppercase mb-1">{t('pro_short')}</div><div className="font-black text-lg text-blue-600">{formatNum(localFood.pro)}</div></div>
+                                        <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100"><div className="text-[10px] font-bold text-emerald-400 uppercase mb-1">{t('fat_short')}</div><div className="font-black text-lg text-emerald-600">{formatNum(localFood.fat)}</div></div>
+                                        <div className="bg-rose-50 p-2 rounded-xl border border-rose-100"><div className="text-[10px] font-bold text-rose-400 uppercase mb-1">{t('carb_short')}</div><div className="font-black text-lg text-rose-600">{formatNum(localFood.carb)}</div></div>
+                                        <div className="bg-purple-50 p-2 rounded-xl border border-purple-100"><div className="text-[10px] font-bold text-purple-400 uppercase mb-1">{t('fiber_short')}</div><div className="font-black text-lg text-purple-600">{formatNum(localFood.fiber)}</div></div>
+                                    </div>
+                                    
+                                    {localFood.recipe && (
+                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider flex items-center gap-2"><IconChefHat className="w-4 h-4"/> {t('recipe_ingredients')}</h4>
+                                            <div className="text-slate-700 whitespace-pre-wrap leading-relaxed text-base font-medium">{localFood.recipe}</div>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                            
-                            {/* AI Buttons - keeping existing logic to copy food name */}
-                             <div className="flex gap-2 pt-2">
-                                {/* Gemini Button */}
-                                <a 
-                                    href="https://gemini.google.com" 
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => { 
-                                        const text = `КБЖУ и клетчатка на 100 г продукта: ${localFood.name}`;
-                                        if (!localFood.name) {
-                                            e.preventDefault();
-                                            showToast(t('enter_name_warning'), "error"); 
-                                            return;
-                                        }
-                                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                            navigator.clipboard.writeText(text).then(() => showToast(t('copied_hint'), "success"));
-                                        } else {
-                                            copyToClipboardFallback(text) && showToast(t('copied_hint'), "success");
-                                        }
-                                    }}
-                                    className="flex-1 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center"
-                                >
-                                    {t('ask_gemini')}
-                                </a>
-                                {/* ChatGPT Button */}
-                                <a 
-                                    href="https://chatgpt.com" 
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => { 
-                                         const text = `КБЖУ и клетчатка на 100 г продукта: ${localFood.name}`;
-                                         if (!localFood.name) {
-                                            e.preventDefault();
-                                            showToast(t('enter_name_warning'), "error"); 
-                                            return;
-                                        }
-                                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                            navigator.clipboard.writeText(text).then(() => showToast(t('copied_hint'), "success"));
-                                        } else {
-                                            copyToClipboardFallback(text) && showToast(t('copied_hint'), "success");
-                                        }
-                                    }}
-                                    className="flex-1 py-3 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center"
-                                >
-                                    {t('ask_chatgpt')}
-                                </a>
-                            </div>
-                            
-                        </div>
+                                <div className="pt-4 border-t border-slate-100 shrink-0">
+                                    <button onClick={() => setMode('edit')} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors">
+                                        <IconEdit/> {t('edit_recipe_title')}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                        /* --- EDIT MODE --- */
+                            <>
+                                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4 shrink-0">
+                                    <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
+                                        <IconEdit/> {recipe.id ? t('edit_recipe_title') : t('new_recipe_title')}
+                                    </h3>
+                                    <button onClick={closeModal} className="bg-slate-100 p-2 rounded-full text-slate-500 hover:bg-slate-200"><IconX /></button>
+                                </div>
+                                <div className="overflow-y-auto space-y-4 flex-1 pb-4">
+                                    
+                                    {/* SCANNER UI */}
+                                    {isScanning ? (
+                                        <div className="bg-black rounded-xl overflow-hidden relative">
+                                            <div id="reader" className="w-full h-64"></div>
+                                            <button onClick={() => setIsScanning(false)} className="absolute top-2 right-2 bg-white/20 p-2 rounded-full text-white"><IconX/></button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setIsScanning(true)} className="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors">
+                                            <IconBarcode /> {t('scan_barcode')}
+                                        </button>
+                                    )}
 
-                        <div className="flex gap-3 pt-4 border-t border-slate-100 shrink-0">
-                            <button onClick={handleDelete} className="py-3 px-4 font-bold text-red-500 bg-red-50 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2"><IconTrash/> {t('delete')}</button>
-                            <button onClick={handleSave} disabled={!localFood.name || !localFood.cal} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 flex justify-center gap-2 ${isPartner ? 'bg-blue-600 shadow-blue-200 btn-secondary' : 'bg-indigo-600 shadow-indigo-200 btn-secondary'}`}><IconSave/> {t('save_btn')}</button>
-                        </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('recipe_name')}</label>
+                                        <input type="text" name="name" placeholder={t('name_placeholder')} value={localFood.name} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800"/>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase ml-1 block mb-1">{t('recipe_ingredients')}</label>
+                                        <textarea name="recipe" placeholder={t('ingredients_placeholder')} value={localFood.recipe} onChange={handleChange} className="w-full p-3 bg-slate-50 rounded-xl font-medium text-sm h-36 resize-none border-none outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800 whitespace-pre-wrap"></textarea>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl">
+                                        <div className="text-center text-xs font-bold text-slate-400 mb-2 uppercase">{t('per_100g')}</div>
+                                        <div className="grid grid-cols-5 gap-2">
+                                            <input type="number" name="cal" placeholder="ККАЛ" value={localFood.cal} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-xs"/>
+                                            <input type="number" name="pro" placeholder="БЕЛ" value={localFood.pro} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-blue-600 bg-blue-50 text-xs"/>
+                                            <input type="number" name="fat" placeholder="ЖИР" value={localFood.fat} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-emerald-600 bg-emerald-50 text-xs"/>
+                                            <input type="number" name="carb" placeholder="УГЛ" value={localFood.carb} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-rose-600 bg-rose-50 text-xs"/>
+                                            <input type="number" name="fiber" placeholder="КЛТ" value={localFood.fiber} onChange={handleChange} className="p-2 text-center rounded-lg font-bold shadow-sm text-purple-600 bg-purple-50 text-xs"/>
+                                        </div>
+                                        <div className="grid grid-cols-5 gap-2 mt-1 text-center text-[10px] font-bold text-slate-500 uppercase">
+                                            <div className="text-slate-400">{t('cal_short')}</div><div className="text-blue-600">{t('pro_short')}</div><div className="text-emerald-600">{t('fat_short')}</div><div className="text-rose-600">{t('carb_short')}</div><div className="text-purple-600">{t('fiber_short')}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" onClick={(e) => handleAiClick(e, localFood.name)} className="flex-1 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center">{t('ask_gemini')}</a>
+                                        <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" onClick={(e) => handleAiClick(e, localFood.name)} className="flex-1 py-3 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1 transition-all transform active:scale-95 no-underline block text-center">{t('ask_chatgpt')}</a>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 pt-4 border-t border-slate-100 shrink-0">
+                                    {recipe.id && (<button onClick={handleDelete} className="py-3 px-4 font-bold text-red-500 bg-red-50 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2 shrink-0"><IconTrash/> {t('delete')}</button>)}
+                                    <button onClick={handleSave} disabled={!localFood.name || localFood.cal === ''} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 flex justify-center gap-2 ${isPartner ? 'bg-blue-600 shadow-blue-200 btn-secondary' : 'bg-indigo-600 shadow-indigo-200 btn-secondary'}`}><IconSave/> {t('save_btn')}</button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             );
@@ -594,12 +777,9 @@
                 return false;
             }
         };
+        window.copyToClipboardFallback = copyToClipboardFallback;
 
-        // Helper to get correct initial name based on language
-        const getInitialName = (lang, isPartner) => {
-            // ИСПРАВЛЕНО: User 1 / User 2 по умолчанию
-            return isPartner ? 'User 2' : 'User 1';
-        };
+        const getInitialName = (lang, isPartner) => isPartner ? 'User 2' : 'User 1';
 
         const App = () => {
             const [user, setUser] = useState(null);
@@ -612,7 +792,6 @@
             const [weightDate, setWeightDate] = useState(formatDate(new Date())); 
             const [inputWeight, setInputWeight] = useState(''); 
 
-            // Auto-detect language
             const detectLang = () => {
                 const lang = navigator.language || navigator.userLanguage || 'ru';
                 if (lang.startsWith('uk')) return 'uk';
@@ -621,7 +800,6 @@
             };
             const [uiLang, setUiLang] = useState(detectLang());
             
-            // --- TRANSLATION HELPER ---
             const t = (key, params = {}) => {
                 let text = TRANSLATIONS[uiLang][key] || key;
                 Object.keys(params).forEach(k => {
@@ -630,7 +808,6 @@
                 return text;
             };
 
-            // Использование getInitialName для инициализации React state
             const [appData, setAppData] = useState(() => ({
                 me: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(detectLang(), false) },
                 partner: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(detectLang(), true) },
@@ -653,21 +830,22 @@
             const [showSettings, setShowSettings] = useState(false);
             const [showRecipe, setShowRecipe] = useState(false);
             
-            // OLD: viewingRecipeId was used for the inline view on the create tab
-            const [viewingRecipeId, setViewingRecipeId] = useState(null); 
-            
-            // NEW: editingRecipeModal will hold the full food object for the modal
+            // --- NEW RECIPE STATE (Inline) ---
+            const [newFood, setNewFood] = useState({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' });
+
+            // --- EDITING RECIPE STATE (Modal Object: { item, mode }) ---
             const [editingRecipeModal, setEditingRecipeModal] = useState(null);
             
-            const [newFood, setNewFood] = useState({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' });
-            const [editingId, setEditingId] = useState(null); 
-            const [searchViewingRecipeId, setSearchViewingRecipeId] = useState(null); // Used for search list item view
+            // This allows switching between viewing/editing modes
+            const openRecipeModal = (item, mode = 'view') => {
+                setEditingRecipeModal({ item, mode });
+            };
+
+            const [searchViewingRecipeId, setSearchViewingRecipeId] = useState(null); 
             
             const fileInputRef = useRef(null);
             const gramInputRef = useRef(null); 
             const searchRef = useRef(null);
-            
-            // --- WEIGHT HELPERS ---
             
             const getWeightOnDay = (date, sortedLogs) => {
                 const relevantLogs = sortedLogs.filter(l => new Date(l.date).getTime() <= date.getTime());
@@ -676,154 +854,78 @@
 
             const calculateWeeklyProgress = (logs, currentDate) => {
                 if (logs.length < 2) return [];
-
                 const sortedLogs = [...logs].sort((a, b) => new Date(a.date) - new Date(b.date));
                 const firstLogDate = new Date(sortedLogs[0].date);
                 const today = new Date(currentDate);
                 today.setHours(23, 59, 59, 999);
-                
                 const results = [];
                 let endDate = new Date(today); 
-                
                 while (true) {
                     let startDate = new Date(endDate);
                     startDate.setDate(startDate.getDate() - 7);
-                    
                     if (startDate.getTime() < firstLogDate.getTime()) {
                          const endLog = getWeightOnDay(endDate, sortedLogs);
                          const startLog = getWeightOnDay(firstLogDate, sortedLogs);
-
                          if (endLog && startLog && endLog.weight !== startLog.weight && !isSameDay(startLog.date, endLog.date)) {
                              const change = (endLog.weight - startLog.weight).toFixed(1);
-                             results.push({
-                                 id: results.length,
-                                 startDate: formatDisplayDate(new Date(startLog.date), uiLang),
-                                 endDate: formatDisplayDate(endDate, uiLang),
-                                 change: change, 
-                             });
+                             results.push({ id: results.length, startDate: formatDisplayDate(new Date(startLog.date), uiLang), endDate: formatDisplayDate(endDate, uiLang), change: change });
                          }
                          break;
                     }
-                    
                     const endLog = getWeightOnDay(endDate, sortedLogs);
                     const startLog = getWeightOnDay(startDate, sortedLogs);
-
                     if (endLog && startLog && endLog.weight !== startLog.weight && !isSameDay(startLog.date, endLog.date)) {
                         const change = (endLog.weight - startLog.weight).toFixed(1);
                         let displayStart = new Date(startDate);
                         displayStart.setDate(displayStart.getDate() + 1);
-                        
-                        results.push({
-                            id: results.length,
-                            startDate: formatDisplayDate(displayStart, uiLang),
-                            endDate: formatDisplayDate(endDate, uiLang),
-                            change: change, 
-                        });
+                        results.push({ id: results.length, startDate: formatDisplayDate(displayStart, uiLang), endDate: formatDisplayDate(endDate, uiLang), change: change });
                     }
-                    
                     endDate = startDate;
                     endDate.setHours(23, 59, 59, 999); 
-                    
                     if (results.length > logs.length * 2) break;
                 }
                 return results.reverse().slice(0, 5);
             };
 
-            // --- UI HANDLERS ---
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 setTimeout(() => setToast(null), 4000); 
             };
-            
+            window.showToast = showToast; 
+
             const signIn = () => auth && auth.signInWithPopup(provider).catch(e => showToast("Error: " + e.message, 'error'));
             const signInGuest = () => auth && auth.signInAnonymously().catch(e => showToast("Error: " + e.message, 'error')); 
-
-            const signOut = () => {
-                if(auth) {
-                    auth.signOut().catch(e => showToast("Error: " + e.message, 'error'));
-                }
-            };
+            const signOut = () => { if(auth) { auth.signOut().catch(e => showToast("Error: " + e.message, 'error')); } };
 
             const handleProfileSwitch = (newProfileId) => {
                 setActiveProfileId(newProfileId);
-                if (newProfileId === 'partner' && (activeTab === 'create' || editingId)) {
-                    setActiveTab('diary');
-                    setEditingId(null);
-                }
+                if (newProfileId === 'partner' && activeTab === 'create') { setActiveTab('diary'); }
             };
 
-            const changeDate = (days) => {
-                const newDate = new Date(currentDate);
-                newDate.setDate(newDate.getDate() + days);
-                setCurrentDate(newDate);
-            };
-
-            const handleDateInput = (e) => {
-                if(e.target.value) {
-                    const [y, m, d] = e.target.value.split('-').map(Number);
-                    setCurrentDate(new Date(y, m - 1, d));
-                }
-            };
-            
-            const openWeighModal = (initialWeight) => {
-                setWeighModal(true);
-                setInputWeight(initialWeight || settings.weight);
-                setWeightDate(formatDate(currentDate));
-            }
+            const changeDate = (days) => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + days); setCurrentDate(newDate); };
+            const handleDateInput = (e) => { if(e.target.value) { const [y, m, d] = e.target.value.split('-').map(Number); setCurrentDate(new Date(y, m - 1, d)); } };
+            const openWeighModal = (initialWeight) => { setWeighModal(true); setInputWeight(initialWeight || settings.weight); setWeightDate(formatDate(currentDate)); }
             
             const requestNotificationPermission = () => {
                 if ("Notification" in window) {
                     Notification.requestPermission().then(permission => {
-                        if (permission === "granted") {
-                            showToast("Уведомления включены!");
-                        } else {
-                            showToast("Доступ к уведомлениям запрещен", "error");
-                        }
+                        if (permission === "granted") showToast("Уведомления включены!");
+                        else showToast("Доступ к уведомлениям запрещен", "error");
                     });
-                } else {
-                    showToast("Ваш браузер не поддерживает уведомления", "error");
-                }
+                } else { showToast("Ваш браузер не поддерживает уведомления", "error"); }
             };
 
-            // FIX: This now only toggles visibility in search list, not main editor form
-            const toggleRecipeViewInList = (e, id) => {
-                e.stopPropagation();
-                setSearchViewingRecipeId(id === searchViewingRecipeId ? null : id);
-            }
+            // Toggle recipe view IN THE SEARCH LIST (inline expand)
+            const toggleRecipeViewInList = (e, id) => { e.stopPropagation(); setSearchViewingRecipeId(id === searchViewingRecipeId ? null : id); }
 
-            // --- ASK AI FEATURE (Fixed: Pure Link + Copy) ---
             const handleAiClick = (e, foodName) => {
-                // 1. If no name, prevent link navigation and show error
-                if (!foodName) {
-                    e.preventDefault(); 
-                    showToast(t('enter_name_warning'), "error"); 
-                    return;
-                }
-                
-                // 2. If name exists, proceed to copy, BUT DO NOT PREVENT DEFAULT.
-                // Letting the event bubble allows the <a href target="_blank"> to work natively.
-                
+                if (!foodName) { e.preventDefault(); showToast(t('enter_name_warning'), "error"); return; }
                 const text = `КБЖУ и клетчатка на 100 г продукта: ${foodName}`;
-                
-                // Try to copy synchronously/asynchronously
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text)
-                        .then(() => showToast(t('copied_hint'), "success"))
-                        .catch(err => {
-                             // Fallback if async clipboard fails
-                             if (copyToClipboardFallback(text)) {
-                                 showToast(t('copied_hint'), "success");
-                             }
-                        });
-                } else {
-                    // Fallback for older browsers
-                    if (copyToClipboardFallback(text)) {
-                         showToast(t('copied_hint'), "success");
-                    }
-                }
+                    navigator.clipboard.writeText(text).then(() => showToast(t('copied_hint'), "success")).catch(err => { if (copyToClipboardFallback(text)) showToast(t('copied_hint'), "success"); });
+                } else { if (copyToClipboardFallback(text)) showToast(t('copied_hint'), "success"); }
             };
 
-            // --- SCROLL HELPER ---
             const scrollToSearch = () => {
                 if (searchRef.current) {
                     setTimeout(() => {
@@ -831,95 +933,44 @@
                         const headerOffset = 10; 
                         const elementPosition = element.getBoundingClientRect().top;
                         const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                    
-                        window.scrollTo({
-                            top: offsetPosition,
-                            behavior: "smooth"
-                        });
+                        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
                     }, 100);
                 }
             };
 
-            // --- NOTIFICATIONS ---
+            useEffect(() => { if (appData[activeProfileId]?.settings?.remindersEnabled && "Notification" in window) Notification.requestPermission(); }, [appData]);
+            useEffect(() => { if (selectedFood && gramInputRef.current) setTimeout(() => { gramInputRef.current.focus(); }, 50); }, [selectedFood]);
+
             useEffect(() => {
-                if (appData[activeProfileId]?.settings?.remindersEnabled && "Notification" in window) {
-                    Notification.requestPermission();
-                }
-            }, [appData]);
-
-            // --- AUTOFOCUS ---
-            useEffect(() => {
-                if (selectedFood && gramInputRef.current) {
-                    setTimeout(() => { gramInputRef.current.focus(); }, 50);
-                }
-            }, [selectedFood]);
-
-
-            // --- CORE LOGIC: AUTH & DATABASE ---
-            useEffect(() => {
-                const safetyTimeout = setTimeout(() => {
-                    if (!authChecked) {
-                         setAuthChecked(true); 
-                    }
-                }, 3000);
-
-                if (!auth) {
-                    setAuthChecked(true);
-                    return () => clearTimeout(safetyTimeout);
-                }
-
+                const safetyTimeout = setTimeout(() => { if (!authChecked) setAuthChecked(true); }, 3000);
+                if (!auth) { setAuthChecked(true); return () => clearTimeout(safetyTimeout); }
                 try {
                     const unsubscribe = auth.onAuthStateChanged(async (u) => {
                         setUser(u);
                         setAuthChecked(true); 
-                        
                         if (u && db) {
                             try {
                                 const docRef = db.collection('users').doc(u.uid);
-                                
                                 docRef.onSnapshot((doc) => {
                                     if (doc.exists) {
                                         const data = doc.data();
-                                        const processProfile = (p) => ({
-                                            ...{ settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: 'User' },
-                                            ...(p || {})
-                                        });
-                                        
+                                        const processProfile = (p) => ({ ...{ settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: 'User' }, ...(p || {}) });
                                         const userLang = data.me?.settings?.language || 'ru';
                                         setUiLang(userLang);
-
                                         let cFoods = data.customFoods || [];
-                                        if (!cFoods.length) {
-                                            cFoods = STARTER_FOODS.map(f => ({ 
-                                                ...f, 
-                                                name: TRANSLATIONS[userLang][f.id] || f.name 
-                                            }));
-                                        }
-
-                                        setAppData({
-                                            me: processProfile(data.me),
-                                            partner: processProfile(data.partner),
-                                            customFoods: cFoods
-                                        });
+                                        if (!cFoods.length) { cFoods = STARTER_FOODS.map(f => ({ ...f, name: TRANSLATIONS[userLang][f.id] || f.name })); }
+                                        setAppData({ me: processProfile(data.me), partner: processProfile(data.partner), customFoods: cFoods });
                                     } else {
-                                        // Initial Create
                                         const initialSettings = { ...DEFAULT_SETTINGS, language: uiLang };
                                         docRef.set({
                                             me: { settings: initialSettings, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, false) },
                                             partner: { settings: initialSettings, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, true) },
-                                            customFoods: STARTER_FOODS.map(f => ({ 
-                                                ...f, 
-                                                name: TRANSLATIONS[uiLang][f.id] || f.name 
-                                            }))
+                                            customFoods: STARTER_FOODS.map(f => ({ ...f, name: TRANSLATIONS[uiLang][f.id] || f.name }))
                                         });
                                     }
                                 });
-                            } catch (e) {
-                                console.error("Snapshot Error", e);
-                                showToast(t('error_save'), 'error');
-                            }
+                            } catch (e) { console.error("Snapshot Error", e); showToast(t('error_save'), 'error'); }
                         } else {
-                            // Offline/Fallback initialization using current UI language names
                             setAppData({
                                 me: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, false) },
                                 partner: { settings: DEFAULT_SETTINGS, log: [], weightLog: [], waterLog: [], name: getInitialName(uiLang, true) },
@@ -927,32 +978,22 @@
                             });
                         }
                     });
-                    return () => {
-                        unsubscribe();
-                        clearTimeout(safetyTimeout);
-                    };
-                } catch (e) {
-                    console.error("Auth Listener Error", e);
-                    setAuthChecked(true);
-                }
+                    return () => { unsubscribe(); clearTimeout(safetyTimeout); };
+                } catch (e) { console.error("Auth Listener Error", e); setAuthChecked(true); }
             }, []); 
 
-            // --- REMINDER INTERVAL ---
             useEffect(() => {
                 const interval = setInterval(() => {
                     const currentNow = new Date();
                     setNow(currentNow);
                     const profileSettings = appData[activeProfileId]?.settings;
                     const waterLog = appData[activeProfileId]?.waterLog || [];
-                    
                     if (profileSettings?.remindersEnabled && waterLog.length > 0) {
                         const sortedWater = [...waterLog].sort((a,b) => new Date(b.date) - new Date(a.date));
                         const lastDrink = sortedWater.length > 0 ? new Date(sortedWater[0].date) : new Date(0); 
                         let targetReminderTime = new Date(lastDrink.getTime() + 1.5 * 60 * 60 * 1000); 
-                        
                         if (deferredReminder) targetReminderTime = new Date(deferredReminder);
                         const diffTillTargetMs = targetReminderTime.getTime() - currentNow.getTime();
-
                         if (diffTillTargetMs <= 0 && diffTillTargetMs > -60000) { 
                              if ("Notification" in window && Notification.permission === "granted") {
                                  const notif = new Notification("Keto Diary", { body: t('reminder_modal_title'), icon: "https://cdn-icons-png.flaticon.com/512/706/706164.png" });
@@ -965,8 +1006,6 @@
                 return () => clearInterval(interval);
             }, [appData, activeProfileId, deferredReminder]);
 
-
-            // --- DATA & CALCS ---
             const currentProfile = appData[activeProfileId];
             const settings = currentProfile.settings;
             const log = currentProfile.log || [];
@@ -978,59 +1017,31 @@
                 if (settings.manualMode) return settings.manual;
                 let bmr = (10 * settings.weight) + (6.25 * settings.height) - (5 * settings.age) + (settings.gender === 'male' ? 5 : -161);
                 const tdee = Math.round(bmr * settings.activity * 0.85);
-                const carbG = 25; 
-                const proG = Math.round(settings.weight * settings.proteinFactor);
+                const carbG = 25; const proG = Math.round(settings.weight * settings.proteinFactor);
                 let fatCal = Math.max(0, tdee - (carbG * 4) - (proG * 4));
                 return { cal: tdee, pro: proG, fat: Math.round(fatCal / 9), carb: carbG };
             }, [settings]);
 
-            const todayLog = useMemo(() => {
-                return log.filter(item => isSameDay(item.date, currentDate))
-                          .sort((a, b) => new Date(b.date) - new Date(a.date)); 
-            }, [log, currentDate]);
-
-            const dailyTotal = useMemo(() => {
-                return todayLog.reduce((acc, item) => ({
-                    cal: acc.cal + item.cal, 
-                    pro: acc.pro + item.pro, 
-                    fat: acc.fat + item.fat, 
-                    carb: acc.carb + item.carb,
-                    fiber: acc.fiber + (item.fiber || 0) 
-                }), { cal: 0, pro: 0, fat: 0, carb: 0, fiber: 0 });
-            }, [todayLog]);
-            
+            const todayLog = useMemo(() => { return log.filter(item => isSameDay(item.date, currentDate)).sort((a, b) => new Date(b.date) - new Date(a.date)); }, [log, currentDate]);
+            const dailyTotal = useMemo(() => { return todayLog.reduce((acc, item) => ({ cal: acc.cal + item.cal, pro: acc.pro + item.pro, fat: acc.fat + item.fat, carb: acc.carb + item.carb, fiber: acc.fiber + (item.fiber || 0) }), { cal: 0, pro: 0, fat: 0, carb: 0, fiber: 0 }); }, [todayLog]);
             const netCarbs = Math.max(0, dailyTotal.carb - dailyTotal.fiber);
-
-            const dailyWater = useMemo(() => {
-                return waterLog.filter(item => isSameDay(item.date, currentDate)).reduce((acc, item) => acc + item.amount, 0);
-            }, [waterLog, currentDate]);
+            const dailyWater = useMemo(() => { return waterLog.filter(item => isSameDay(item.date, currentDate)).reduce((acc, item) => acc + item.amount, 0); }, [waterLog, currentDate]);
             
             const weightStats = useMemo(() => {
                 if (weightLog.length === 0) return null;
                 const sortedLogs = weightLog.sort((a,b) => new Date(a.date) - new Date(b.date));
                 const firstLog = sortedLogs[0];
                 const lastLog = sortedLogs.filter(l => isSameDay(l.date, currentDate)).pop() || sortedLogs[sortedLogs.length - 1]; 
-                
                 const currentW = parseFloat(lastLog.weight);
                 const targetW = parseFloat(settings.targetWeight) || currentW;
                 const totalChange = (currentW - firstLog.weight).toFixed(1);
                 const leftToTarget = (currentW - targetW).toFixed(1);
-
-                return {
-                    start: firstLog.weight,
-                    current: currentW,
-                    target: targetW,
-                    totalChange: totalChange,
-                    leftToTarget: leftToTarget,
-                    days: Math.ceil((new Date(lastLog.date) - new Date(firstLog.date)) / (1000 * 60 * 60 * 24)),
-                    weeklyHistory: calculateWeeklyProgress(weightLog, currentDate)
-                };
+                return { start: firstLog.weight, current: currentW, target: targetW, totalChange: totalChange, leftToTarget: leftToTarget, days: Math.ceil((new Date(lastLog.date) - new Date(firstLog.date)) / (1000 * 60 * 60 * 24)), weeklyHistory: calculateWeeklyProgress(weightLog, currentDate) };
             }, [weightLog, settings.targetWeight, currentDate]);
             
             const calculateFastingTime = (mealDateStr) => {
                 const mealDate = new Date(mealDateStr);
                 const previousMeals = log.filter(item => new Date(item.date).getTime() < mealDate.getTime()).sort((a, b) => new Date(b.date) - new Date(a.date));
-
                 let lastMealDate = null;
                 for (const item of previousMeals) {
                     const itemTime = new Date(item.date);
@@ -1045,9 +1056,7 @@
                 return { hours: diffHrs, mins: diffMins, ms: diffMs };
             }
             
-            const todayLogWithFasting = useMemo(() => {
-                return todayLog.map(item => ({ ...item, fasting: calculateFastingTime(item.date) }));
-            }, [todayLog, log]);
+            const todayLogWithFasting = useMemo(() => { return todayLog.map(item => ({ ...item, fasting: calculateFastingTime(item.date) })); }, [todayLog, log]);
 
             const fastingStats = useMemo(() => {
                 if (log.length === 0) return null;
@@ -1057,7 +1066,6 @@
                 const latestTime = new Date(latestEntry.date);
                 const isLatestToday = isSameDay(latestEntry.date, now);
                 const isMidnight = latestTime.getHours() === 0 && latestTime.getMinutes() === 0 && latestTime.getSeconds() === 0;
-
                 if (isLatestToday && isMidnight && sortedLog.length > 1) {
                     const realLatest = sortedLog.find(item => {
                         const itemTime = new Date(item.date);
@@ -1091,23 +1099,14 @@
             }, [waterLog, settings.remindersEnabled, deferredReminder, now, dailyWater, settings.waterTarget]);
 
 
-            const saveData = (newData) => {
-                setAppData(newData);
-                // !!! FIX: USING DIRECT PATH TO USERS (NO ARTIFACTS) !!!
-                if (user && db) db.collection('users').doc(user.uid).set(newData).catch(err => showToast(t('error_save'), 'error'));
-            };
+            const saveData = (newData) => { setAppData(newData); if (user && db) db.collection('users').doc(user.uid).set(newData).catch(err => showToast(t('error_save'), 'error')); };
 
             const handleExport = () => {
                 const dataStr = JSON.stringify(appData, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `keto_backup_${formatDate(new Date())}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                showToast(t('backup_downloaded'));
+                const link = document.createElement('a'); link.href = url; link.download = `keto_backup_${formatDate(new Date())}.json`;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast(t('backup_downloaded'));
             };
 
             const handleImport = (e) => {
@@ -1119,20 +1118,11 @@
                         const importedData = JSON.parse(event.target.result);
                         if (importedData.me && importedData.partner) {
                             setAppData(importedData);
-                            // !!! FIX: USING DIRECT PATH TO USERS !!!
                             if (user && db) {
-                                db.collection('users').doc(user.uid).set(importedData)
-                                  .then(() => showToast(t('data_restored')))
-                                  .catch(e => showToast(t('error_save') + ": " + e.message, "error"));
-                            } else {
-                                showToast(t('data_loaded'));
-                            }
-                        } else {
-                            showToast(t('invalid_file'), "error");
-                        }
-                    } catch (err) {
-                        showToast(t('error_read'), "error");
-                    }
+                                db.collection('users').doc(user.uid).set(importedData).then(() => showToast(t('data_restored'))).catch(e => showToast(t('error_save') + ": " + e.message, "error"));
+                            } else { showToast(t('data_loaded')); }
+                        } else { showToast(t('invalid_file'), "error"); }
+                    } catch (err) { showToast(t('error_read'), "error"); }
                 };
                 reader.readAsText(file);
                 e.target.value = null;
@@ -1140,61 +1130,34 @@
 
             const triggerImport = () => { if (fileInputRef.current) fileInputRef.current.click(); };
             const updateSettings = (newSet) => { const newData = { ...appData, [activeProfileId]: { ...currentProfile, settings: newSet } }; saveData(newData); };
-            
-            // FIX: Implemented logic to save name in Firestore correctly
             const updateName = (val) => { 
-                const newAppData = { ...appData, [activeProfileId]: { ...currentProfile, name: val } }; 
-                // Обновляем имя в appData
-                setAppData(newAppData); 
-                // Сохраняем в Firebase
-                if (user && db) {
-                    // Используем update() для изменения только поля 'name'
-                    db.collection('users').doc(user.uid).set(newAppData)
-                      .catch(err => console.error(t('error_save'), err));
-                }
+                const newData = { ...appData, [activeProfileId]: { ...currentProfile, name: val } }; 
+                setAppData(newData); 
+                if (user && db) db.collection('users').doc(user.uid).set(newData).catch(err => console.error(t('error_save'), err));
             };
-
 
             const addToLog = () => {
                 if (!selectedFood || !gramInput) return;
-                const grams = parseFloat(gramInput);
-                const mult = grams / 100;
+                const grams = parseFloat(gramInput); const mult = grams / 100;
                 let entryDate = new Date().toISOString();
-                const newItem = {
-                    id: Date.now(), name: selectedFood.name, icon: selectedFood.icon || '🍽️', grams, 
-                    cal: Math.round(selectedFood.cal * mult), pro: Math.round(selectedFood.pro * mult),
-                    fat: Math.round(selectedFood.fat * mult), carb: Math.round(selectedFood.carb * mult),
-                    fiber: Math.round((selectedFood.fiber || 0) * mult), date: entryDate
-                };
+                const newItem = { id: Date.now(), name: selectedFood.name, icon: selectedFood.icon || '🍽️', grams, cal: Math.round(selectedFood.cal * mult), pro: Math.round(selectedFood.pro * mult), fat: Math.round(selectedFood.fat * mult), carb: Math.round(selectedFood.carb * mult), fiber: Math.round((selectedFood.fiber || 0) * mult), date: entryDate };
                 const newLog = [...log, newItem]; 
                 saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
                 setSearchTerm(''); setSelectedFood(null); setGramInput(''); showToast(t('saved_toast'));
             };
 
             const removeLog = (id) => {
-                setConfirmModal({
-                    message: t('confirm_delete'),
-                    onConfirm: () => {
-                        const newLog = log.filter(i => i.id !== id);
-                        saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
-                        setConfirmModal(null); showToast(t('deleted_toast'));
-                    }
-                });
+                setConfirmModal({ message: t('confirm_delete'), onConfirm: () => { const newLog = log.filter(i => i.id !== id); saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } }); setConfirmModal(null); showToast(t('deleted_toast')); } });
             };
 
             const toggleWaterCup = (index) => {
-                const vol = settings.cupVolume || 250; 
-                const filledCups = Math.floor(dailyWater / vol);
-                let entryDate;
-                if (isSameDay(currentDate.toISOString(), new Date())) { entryDate = new Date().toISOString(); } 
-                else { const d = new Date(currentDate); d.setHours(12, 0, 0, 0); entryDate = d.toISOString(); }
-
+                const vol = settings.cupVolume || 250; const filledCups = Math.floor(dailyWater / vol);
+                let entryDate; if (isSameDay(currentDate.toISOString(), new Date())) { entryDate = new Date().toISOString(); } else { const d = new Date(currentDate); d.setHours(12, 0, 0, 0); entryDate = d.toISOString(); }
                 if (index < filledCups) {
                     const todaysEntries = waterLog.filter(item => isSameDay(item.date, currentDate));
                     if (todaysEntries.length > 0) {
                         const sortedTodayEntries = todaysEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
-                        const latestEntry = sortedTodayEntries[0]; 
-                        const newLog = waterLog.filter(w => w.id !== latestEntry.id);
+                        const latestEntry = sortedTodayEntries[0]; const newLog = waterLog.filter(w => w.id !== latestEntry.id);
                         saveData({ ...appData, [activeProfileId]: { ...currentProfile, waterLog: newLog } });
                     }
                 } else {
@@ -1205,8 +1168,7 @@
             };
 
             const confirmAddWater = () => {
-                const vol = settings.cupVolume || 250;
-                const newLog = [...waterLog, { id: Date.now(), date: new Date().toISOString(), amount: vol }]; 
+                const vol = settings.cupVolume || 250; const newLog = [...waterLog, { id: Date.now(), date: new Date().toISOString(), amount: vol }]; 
                 saveData({ ...appData, [activeProfileId]: { ...currentProfile, waterLog: newLog } });
                 setReminderModal(false); setDeferredReminder(null); showToast(t('saved_toast'));
             };
@@ -1223,96 +1185,69 @@
                 setWeighModal(null); setWeightDate(formatDate(new Date())); setInputWeight(''); showToast(t('saved_toast'));
             };
 
-            // FIX: This function now sets the data to open the fullscreen modal
-            const startEditCustomFood = (e, food) => {
-                e.stopPropagation();
-                setEditingRecipeModal(food);
-                setSearchViewingRecipeId(null); // Close inline view if open
-                // The main "Create" form is now bypassed for editing in the modal
+            const saveCustomFood = () => {
+                const { name, pro, fat, carb, fiber, cal, recipe } = newFood;
+                if (!name || !cal) { showToast(t('enter_name_warning'), "error"); return; }
+                let newCustomFoods = [...customFoods];
+                const foodObj = { name, pro: +pro, fat: +fat, carb: +carb, fiber: +fiber, cal: +cal, recipe, isCustom: true, icon: '🍽️' };
+                newCustomFoods.unshift({ id: 'c_' + Date.now(), ...foodObj });
+                saveData({ ...appData, customFoods: newCustomFoods });
+                setNewFood({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }); showToast(t('saved_toast'));
             };
 
-            // FIX: The saveCustomFood now handles both new and existing recipes from the main form OR the modal
-            const saveCustomFood = (foodToSave = newFood) => {
-                const { name, pro, fat, carb, fiber, cal, recipe } = foodToSave;
-                const id = foodToSave.id || editingId;
-
-                if (!name || !cal) {
-                    showToast(t('enter_name_warning'), "error");
-                    return;
-                }
-                
+            // This function is passed to RecipeModal to save EDITS
+            const saveEditedRecipe = (foodToSave) => {
+                const { id, name, pro, fat, carb, fiber, cal, recipe, isCustom, icon } = foodToSave;
                 let newCustomFoods = [...customFoods];
-                const foodObj = { 
-                    name, pro: +pro, fat: +fat, carb: +carb, fiber: +fiber, cal: +cal, recipe, 
-                    isCustom: true, icon: '🍽️' 
-                };
+                const foodObj = { name, pro, fat, carb, fiber, cal, recipe, isCustom: isCustom !== undefined ? isCustom : true, icon: icon || '🍽️' };
+                
+                let savedItem = null;
 
-                if (id) {
-                    // Editing existing food (from modal or main form)
-                    newCustomFoods = newCustomFoods.map(f => f.id === id ? { ...f, ...foodObj } : f);
-                    setEditingId(null);
-                } else {
-                    // Creating new food (only from main form)
-                    newCustomFoods.unshift({ id: 'c_' + Date.now(), ...foodObj });
+                if (id && (id.startsWith('c_') || id.startsWith('b_'))) { 
+                     // Edit existing
+                     newCustomFoods = newCustomFoods.map(f => f.id === id ? { ...f, ...foodObj } : f);
+                     savedItem = { id, ...foodObj }; // Keep ID
+                } else { 
+                     // Create new
+                     const newId = 'c_' + Date.now();
+                     savedItem = { id: newId, ...foodObj };
+                     newCustomFoods.unshift(savedItem); 
                 }
                 
                 saveData({ ...appData, customFoods: newCustomFoods });
-                setNewFood({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }); 
-                setEditingRecipeModal(null); // Close modal
+                
+                // UPDATE modal state instead of closing, to ensure ID is present for subsequent saves
+                setEditingRecipeModal({ item: savedItem, mode: 'edit' }); 
+                
                 showToast(t('saved_toast'));
             };
 
             const deleteCustomFood = (id) => {
-                const newCustomFoods = customFoods.filter(f => f.id !== id);
-                saveData({ ...appData, customFoods: newCustomFoods });
-                setConfirmModal(null); 
-                showToast(t('deleted_toast'));
-                setEditingRecipeModal(null);
+                setConfirmModal({ message: t('confirm_delete'), onConfirm: () => { const newCustomFoods = customFoods.filter(f => f.id !== id); saveData({ ...appData, customFoods: newCustomFoods }); setConfirmModal(null); showToast(t('deleted_toast')); setEditingRecipeModal(null); } });
             };
 
             const deleteCustomFoodWrapper = (e, id) => {
                 e.stopPropagation();
-                setConfirmModal({
-                    message: t('confirm_delete'),
-                    onConfirm: () => deleteCustomFood(id)
-                });
+                setConfirmModal({ message: t('confirm_delete'), onConfirm: () => { const newCustomFoods = customFoods.filter(f => f.id !== id); saveData({ ...appData, customFoods: newCustomFoods }); setConfirmModal(null); showToast(t('deleted_toast')); } });
             };
 
             const copyYesterday = () => {
                 const yesterday = new Date(currentDate); yesterday.setDate(yesterday.getDate() - 1);
                 const yesterdayLog = log.filter(item => isSameDay(item.date, yesterday));
                 if (yesterdayLog.length === 0) { showToast(t('yesterday_empty'), "error"); return; }
-                
-                setConfirmModal({
-                    message: t('confirm_copy'),
-                    onConfirm: () => {
-                        const newEntries = yesterdayLog.map((item, index) => ({
-                            ...item, id: Date.now() + index, 
-                            date: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).toISOString()
-                        }));
-                        const newLog = [...log, ...newEntries]; 
-                        saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } });
-                        showToast(t('copied_n_entries', {n: newEntries.length})); setConfirmModal(null);
-                    },
-                    isCopy: true 
-                });
+                setConfirmModal({ message: t('confirm_copy'), onConfirm: () => { const newEntries = yesterdayLog.map((item, index) => ({ ...item, id: Date.now() + index, date: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).toISOString() })); const newLog = [...log, ...newEntries]; saveData({ ...appData, [activeProfileId]: { ...currentProfile, log: newLog } }); showToast(t('copied_n_entries', {n: newEntries.length})); setConfirmModal(null); }, isCopy: true });
             };
 
             const addBaseFoods = () => {
                 const base = STARTER_FOODS.map(f => ({ ...f, name: TRANSLATIONS[uiLang][f.id] || f.name }));
-                const currentIds = new Set(customFoods.map(f => f.id));
-                const newFoods = base.filter(f => !currentIds.has(f.id));
+                const currentIds = new Set(customFoods.map(f => f.id)); const newFoods = base.filter(f => !currentIds.has(f.id));
                 if (newFoods.length === 0) { showToast(t('no_new_foods')); return; }
-                const updatedList = [...newFoods, ...customFoods];
-                saveData({ ...appData, customFoods: updatedList });
-                showToast(t('base_added'));
+                const updatedList = [...newFoods, ...customFoods]; saveData({ ...appData, customFoods: updatedList }); showToast(t('base_added'));
             };
 
             const openShoppingList = () => {
                 const uniqueItems = {};
-                todayLog.forEach(item => {
-                    if (uniqueItems[item.name]) { uniqueItems[item.name].grams += item.grams; } else { uniqueItems[item.name] = { grams: item.grams }; }
-                });
+                todayLog.forEach(item => { if (uniqueItems[item.name]) { uniqueItems[item.name].grams += item.grams; } else { uniqueItems[item.name] = { grams: item.grams }; } });
                 const sortedNames = Object.keys(uniqueItems).sort();
                 let text = t('shopping_list_header', {date: formatDisplayDate(currentDate, uiLang)});
                 sortedNames.forEach(name => { text += `▫️ ${name}: ${Math.round(uniqueItems[name].grams)}${t('gram_placeholder').substring(0,1).toLowerCase()}\n`; });
@@ -1320,24 +1255,13 @@
             };
 
             const formatDuration = (ms) => {
-                const totalSeconds = Math.floor(ms / 1000);
-                const hours = Math.floor(totalSeconds / 3600);
-                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                let result = '';
-                if (hours > 0) result += `${hours}${t('hour_short')} `;
-                if (minutes > 0 || hours === 0) result += `${minutes}${t('min_short')}`;
-                return result.trim();
+                const totalSeconds = Math.floor(ms / 1000); const hours = Math.floor(totalSeconds / 3600); const minutes = Math.floor((totalSeconds % 3600) / 60);
+                let result = ''; if (hours > 0) result += `${hours}${t('hour_short')} `; if (minutes > 0 || hours === 0) result += `${minutes}${t('min_short')}`; return result.trim();
             }
 
             const copyToClipboard = (text) => {
-                const fallback = (str) => {
-                    const ta = document.createElement("textarea");
-                    ta.value = str; ta.style.position="fixed"; document.body.appendChild(ta); ta.focus(); ta.select();
-                    try { document.execCommand('copy'); showToast(t('copied_toast')); } catch (e) { showToast("Error copying", 'error'); }
-                    document.body.removeChild(ta);
-                };
-                if (!navigator.clipboard) { fallback(text); return; }
-                navigator.clipboard.writeText(text).then(() => showToast(t('copied_toast'))).catch(() => fallback(text)); 
+                const fallback = (str) => { const ta = document.createElement("textarea"); ta.value = str; ta.style.position="fixed"; document.body.appendChild(ta); ta.focus(); ta.select(); try { document.execCommand('copy'); showToast(t('copied_toast')); } catch (e) { showToast("Error copying", 'error'); } document.body.removeChild(ta); };
+                if (!navigator.clipboard) { fallback(text); return; } navigator.clipboard.writeText(text).then(() => showToast(t('copied_toast'))).catch(() => fallback(text)); 
             };
 
             const copyRemaining = () => {
@@ -1348,13 +1272,10 @@
                 text += `🍗 ${t('pro_short')}: ${dailyTotal.pro} / ${targets.pro}г ${formatDiff(dailyTotal.pro, targets.pro, 'г')}\n`; 
                 text += `🥑 ${t('fat_short')}: ${dailyTotal.fat} / ${targets.fat}г ${formatDiff(dailyTotal.fat, targets.fat, 'г')}\n`; 
                 text += `🥦 ${t('net_carb_short')}: ${netCarbs} / ${targets.carb}г ${formatDiff(netCarbs, targets.carb, 'г')}\n`;
-                text += `${t('fiber_day')}: ${dailyTotal.fiber}г\n\n`; 
-                text += t('report_menu');
+                text += `${t('fiber_day')}: ${dailyTotal.fiber}г\n\n`; text += t('report_menu');
                 if (todayLogWithFasting.length === 0) { text += `(${t('empty_log')})\n`; } else {
                     todayLogWithFasting.forEach((item, index) => {
-                        const itemNetCarbs = Math.max(0, item.carb - (item.fiber || 0)); 
-                        const time = formatTime(item.date);
-                        const fastingDuration = formatDuration(item.fasting.ms);
+                        const itemNetCarbs = Math.max(0, item.carb - (item.fiber || 0)); const time = formatTime(item.date); const fastingDuration = formatDuration(item.fasting.ms);
                         text += `${index + 1}. ${item.name} (${item.grams}г) - ${t('meal_time')}: ${time}\n`;
                         text += `   └ [${t('fast_before')}: ${fastingDuration}] | ${item.cal} ${t('cal_short')} [${t('pro_short')}:${item.pro}, ${t('fat_short')}:${item.fat}, ${t('net_carb_short')}:${itemNetCarbs}, ${t('carb_short')}:${item.carb}, ${t('fiber_short')}:${item.fiber || 0}]\n`;
                     });
@@ -1363,31 +1284,11 @@
             };
 
             const WeightChart = ({ logs, activeProfileId }) => {
-                const strokeColor = activeProfileId === 'partner' ? '#2563eb' : '#f97316';
-                const fillColor = activeProfileId === 'partner' ? '#3b82f6' : '#f97316';
+                const strokeColor = activeProfileId === 'partner' ? '#2563eb' : '#f97316'; const fillColor = activeProfileId === 'partner' ? '#3b82f6' : '#f97316';
                 if (!logs || logs.length < 2) return null;
-                const recentLogs = logs.slice(-30);
-                const weights = recentLogs.map(l => l.weight);
-                const minW = Math.min(...weights) - 0.5;
-                const maxW = Math.max(...weights) + 0.5;
-                const points = recentLogs.map((l, i) => {
-                    const x = (i / (recentLogs.length - 1)) * 100;
-                    const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40;
-                    return `${x},${y}`;
-                }).join(' ');
-                return (
-                    <div className="w-full h-10 mt-2 bg-white/50 rounded-lg p-1 relative overflow-hidden">
-                        <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                            <polyline fill="none" stroke={strokeColor} strokeWidth="2" points={points} vectorEffect="non-scaling-stroke"/>
-                            {recentLogs.map((l, i) => {
-                                const x = (i / (recentLogs.length - 1)) * 100;
-                                const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40;
-                                return <circle key={i} cx={x} cy={y} r="1.5" fill={fillColor} vectorEffect="non-scaling-stroke"/>
-                            })}
-                        </svg>
-                        <div className="absolute top-0 right-0 text-[8px] text-slate-400 font-bold">{recentLogs[recentLogs.length-1].weight}kg</div>
-                    </div>
-                );
+                const recentLogs = logs.slice(-30); const weights = recentLogs.map(l => l.weight); const minW = Math.min(...weights) - 0.5; const maxW = Math.max(...weights) + 0.5;
+                const points = recentLogs.map((l, i) => { const x = (i / (recentLogs.length - 1)) * 100; const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40; return `${x},${y}`; }).join(' ');
+                return ( <div className="w-full h-10 mt-2 bg-white/50 rounded-lg p-1 relative overflow-hidden"> <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible" preserveAspectRatio="none"> <polyline fill="none" stroke={strokeColor} strokeWidth="2" points={points} vectorEffect="non-scaling-stroke"/> {recentLogs.map((l, i) => { const x = (i / (recentLogs.length - 1)) * 100; const y = 40 - ((l.weight - minW) / (maxW - minW)) * 40; return <circle key={i} cx={x} cy={y} r="1.5" fill={fillColor} vectorEffect="non-scaling-stroke"/> })} </svg> <div className="absolute top-0 right-0 text-[8px] text-slate-400 font-bold">{recentLogs[recentLogs.length-1].weight}kg</div> </div> );
             };
 
             if (!authChecked) return (<div className="min-h-screen flex items-center justify-center bg-[#fff7ed]"><div className="text-center text-slate-500 font-bold">{t('loading')}</div></div>);
@@ -1404,20 +1305,14 @@
                                 <button onClick={()=>setUiLang('uk')} className={`px-3 py-2 rounded-lg text-xl transition-all ${uiLang==='uk' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:bg-slate-100'}`}>🇺🇦</button>
                             </div>
                         </div>
-                        <button onClick={signIn} className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-4 px-6 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95 hover:border-orange-200">
-                            <IconGoogle /> <span>{t('login_google')}</span>
-                        </button>
-                        <button onClick={signInGuest} className="w-full mt-3 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold py-4 px-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95">
-                             <IconGuest /> <span>{t('login_guest')}</span>
-                        </button>
+                        <button onClick={signIn} className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-4 px-6 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95 hover:border-orange-200"><IconGoogle /> <span>{t('login_google')}</span></button>
+                        <button onClick={signInGuest} className="w-full mt-3 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold py-4 px-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center gap-3 transition-transform active:scale-95"><IconGuest /> <span>{t('login_guest')}</span></button>
                     </div>
                     {toast && <div className={`fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none`}><div className={`rounded-2xl shadow-2xl px-6 py-4 flex flex-col items-center gap-2 backdrop-blur-md pointer-events-auto toast-enter max-w-xs text-center border border-white/20 ${toast.type === 'success' ? 'bg-emerald-600/95 text-white' : 'bg-red-500/95 text-white'}`}><div className="flex items-center gap-3">{toast.type === 'success' && <IconCheck className="w-6 h-6"/>}<div className="font-bold text-base">{toast.message}</div></div></div></div>}
                 </div>
             );
             
-            const cupVol = settings.cupVolume || 250; 
-            const targetCups = Math.ceil((settings.waterTarget || 2000) / cupVol);
-            const drankCups = Math.floor(dailyWater / cupVol);
+            const cupVol = settings.cupVolume || 250; const targetCups = Math.ceil((settings.waterTarget || 2000) / cupVol); const drankCups = Math.floor(dailyWater / cupVol);
 
             return (
                 <div className={`min-h-screen pb-24 text-slate-800 relative ${activeProfileId === 'partner' ? 'partner-mode' : ''}`} style={activeProfileId === 'partner' ? { backgroundColor: '#2563eb' } : { backgroundColor: '#fff7ed' }}>
@@ -1437,41 +1332,19 @@
                     
                     {reminderModal && (
                         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center">
-                                <div className="flex justify-center mb-4"><IconGlass className="w-12 h-12 text-blue-500"/></div>
-                                <h3 className="font-bold text-xl mb-6 text-slate-800">{t('reminder_modal_title')}</h3>
-                                <div className="flex gap-3">
-                                    <button onClick={deferReminder} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('skip_btn')}</button>
-                                    <button onClick={confirmAddWater} className="flex-1 py-3 font-bold text-white bg-blue-500 rounded-xl shadow-lg shadow-blue-200">{t('drink_btn')}</button>
-                                </div>
-                            </div>
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center"><div className="flex justify-center mb-4"><IconGlass className="w-12 h-12 text-blue-500"/></div><h3 className="font-bold text-xl mb-6 text-slate-800">{t('reminder_modal_title')}</h3><div className="flex gap-3"><button onClick={deferReminder} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('skip_btn')}</button><button onClick={confirmAddWater} className="flex-1 py-3 font-bold text-white bg-blue-500 rounded-xl shadow-lg shadow-blue-200">{t('drink_btn')}</button></div></div>
                         </div>
                     )}
 
                     {weighModal && (
                         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center">
-                                <h3 className="font-bold text-lg mb-2 text-slate-800">{t('weight_today_title')}</h3>
-                                <div className="text-sm font-bold text-slate-400 mb-6">{formatDisplayDate(new Date(weightDate), uiLang)}</div>
-                                <input type="number" value={inputWeight} onChange={(e) => setInputWeight(e.target.value)} className={`w-full p-4 text-3xl font-black text-center bg-slate-50 rounded-2xl border mb-6 focus:ring-2 outline-none text-slate-800 ${activeProfileId === 'partner' ? 'border-blue-100 focus:ring-blue-200' : 'border-orange-100 focus:ring-orange-200'}`} autoFocus step="0.1"/>
-                                <div className="flex gap-3">
-                                    <button onClick={() => {setWeighModal(null); setInputWeight('')}} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('cancel')}</button>
-                                    <button onClick={() => saveWeight(inputWeight, weightDate)} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg ${activeProfileId === 'partner' ? 'bg-blue-500 shadow-blue-200' : 'bg-orange-500 shadow-orange-200'}`}>{t('weight_save_btn')}</button>
-                                </div>
-                            </div>
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl scale-in text-center"><h3 className="font-bold text-lg mb-2 text-slate-800">{t('weight_today_title')}</h3><div className="text-sm font-bold text-slate-400 mb-6">{formatDisplayDate(new Date(weightDate), uiLang)}</div><input type="number" value={inputWeight} onChange={(e) => setInputWeight(e.target.value)} className={`w-full p-4 text-3xl font-black text-center bg-slate-50 rounded-2xl border mb-6 focus:ring-2 outline-none text-slate-800 ${activeProfileId === 'partner' ? 'border-blue-100 focus:ring-blue-200' : 'border-orange-100 focus:ring-orange-200'}`} autoFocus step="0.1"/><div className="flex gap-3"><button onClick={() => {setWeighModal(null); setInputWeight('')}} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('cancel')}</button><button onClick={() => saveWeight(inputWeight, weightDate)} className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg ${activeProfileId === 'partner' ? 'bg-blue-500 shadow-blue-200' : 'bg-orange-500 shadow-orange-200'}`}>{t('weight_save_btn')}</button></div></div>
                         </div>
                     )}
 
                     {shoppingModal && (
                         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in text-slate-800">
-                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><IconList/> {t('shopping_list_title')}</h3>
-                                <textarea readOnly className="w-full h-48 bg-slate-50 p-3 rounded-xl text-sm font-medium border-none outline-none resize-none mb-4 text-slate-800" value={shoppingModal}></textarea>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShoppingModal(null)} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('close_btn')}</button>
-                                    <button onClick={() => copyToClipboard(shoppingModal)} className="flex-1 py-3 font-bold text-white bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">{t('copy_btn')}</button>
-                                </div>
-                            </div>
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in text-slate-800"><h3 className="font-bold text-lg mb-4 flex items-center gap-2"><IconList/> {t('shopping_list_title')}</h3><textarea readOnly className="w-full h-48 bg-slate-50 p-3 rounded-xl text-sm font-medium border-none outline-none resize-none mb-4 text-slate-800" value={shoppingModal}></textarea><div className="flex gap-3"><button onClick={() => setShoppingModal(null)} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 rounded-xl">{t('close_btn')}</button><button onClick={() => copyToClipboard(shoppingModal)} className="flex-1 py-3 font-bold text-white bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">{t('copy_btn')}</button></div></div>
                         </div>
                     )}
 
@@ -1480,8 +1353,8 @@
                         <RecipeModal
                             isOpen={!!editingRecipeModal}
                             closeModal={() => setEditingRecipeModal(null)}
-                            recipe={editingRecipeModal}
-                            saveRecipe={saveCustomFood}
+                            modalData={editingRecipeModal}
+                            saveRecipe={saveEditedRecipe}
                             deleteRecipe={deleteCustomFood}
                             t={t}
                             activeProfileId={activeProfileId}
@@ -1489,11 +1362,7 @@
                     )}
                     
                     {toast && (
-                        <div className={`fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none`}>
-                            <div className={`rounded-2xl shadow-2xl px-6 py-4 flex flex-col items-center gap-2 backdrop-blur-md pointer-events-auto toast-enter max-w-xs text-center border border-white/20 ${toast.type === 'success' ? 'bg-emerald-600/95 text-white' : 'bg-red-500/95 text-white'}`}>
-                                <div className="flex items-center gap-3">{toast.type === 'success' && <IconCheck className="w-6 h-6"/>}<div className="font-bold text-base">{toast.message}</div></div>
-                            </div>
-                        </div>
+                        <div className={`fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none`}><div className={`rounded-2xl shadow-2xl px-6 py-4 flex flex-col items-center gap-2 backdrop-blur-md pointer-events-auto toast-enter max-w-xs text-center border border-white/20 ${toast.type === 'success' ? 'bg-emerald-600/95 text-white' : 'bg-red-500/95 text-white'}`}><div className="flex items-center gap-3">{toast.type === 'success' && <IconCheck className="w-6 h-6"/>}<div className="font-bold text-base">{toast.message}</div></div></div></div>
                     )}
 
                     {showSettings && (
@@ -1506,6 +1375,7 @@
                                             <select value={settings.language || 'ru'} onChange={e=>updateSettings({...settings, language: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold"><option value="ru">Русский (RU)</option><option value="en">English 🇬🇧</option><option value="uk">Українська 🇺🇦</option></select>
                                         </div>
                                         <div><label className="text-xs font-bold text-slate-400 uppercase ml-1">{t('name_label')}</label><input type="text" value={currentProfile.name} onChange={e=>updateName(e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold"/></div>
+                                        {/* Settings content omitted for brevity (same as previous) */}
                                         <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
                                             <div><label className="text-xs font-bold text-blue-800 uppercase ml-1 block mb-2">{t('water_target_label')}</label><input type="number" step="250" value={settings.waterTarget || 2000} onChange={e=>updateSettings({...settings, waterTarget: +e.target.value})} className="w-full bg-white p-3 rounded-xl border border-blue-200 font-bold text-blue-600"/></div>
                                             <div><label className="text-xs font-bold text-blue-800 uppercase ml-1 block mb-2">{t('cup_volume_label')}</label><input type="number" step="10" value={settings.cupVolume || 250} onChange={e=>updateSettings({...settings, cupVolume: +e.target.value})} className="w-full bg-white p-3 rounded-xl border border-blue-200 font-bold text-blue-600"/></div>
@@ -1559,22 +1429,14 @@
                                                 Email: business.managerr@gmail.com<br/>
                                                 Тел: +38 067 991 74 14
                                             </p>
-                                            {/* Removed grayscale and opacity classes to make icons bright by default */}
                                             <div className="mt-3 flex flex-wrap justify-center items-center gap-4">
-                                                {/* Visa */}
                                                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-3 w-auto" alt="Visa"/>
-                                                {/* Mastercard */}
                                                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-4 w-auto" alt="Mastercard"/>
-                                                {/* Google Pay (Multicolor G + Pay) */}
                                                 <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" className="h-4 w-auto" alt="Google Pay"/>
-                                                {/* Apple Pay */}
                                                 <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" className="h-4 w-auto" alt="Apple Pay"/>
-                                                {/* WayForPay (Updated URL) */}
                                                 <img src="https://m.wayforpay.com/images/sidebar/logo_full_dark.png" className="h-5 w-auto object-contain" alt="WayForPay"/>
                                             </div>
                                         </div>
-                                        {/* --- КОНЕЦ ЮРИДИЧЕСКОЙ ИНФОРМАЦИИ --- */}
-
                                     </div>
                                 </div>
                             </div>
@@ -1588,9 +1450,8 @@
                                 <div className="flex flex-col items-start gap-1"> 
                                     <div className="flex items-center gap-2 h-8">
                                         <img src={user?.photoURL || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} className="w-8 h-8 rounded-full border border-slate-200"/>
-                                        <span className="text-xs font-bold text-slate-400 max-w-[100px] truncate leading-none">{user?.displayName || (user?.isAnonymous ? 'Guest' : 'User')}</span>
+                                        {/* REMOVED: Name display next to Avatar as per request */}
                                     </div>
-                                    {/* MODIFIED: Replaced Leaf+Name with iHerb button */}
                                     <div className="flex items-center gap-1 pl-1">
                                         <a href={IHERB_AFFILIATE_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-full transition-colors shadow-sm border-2 border-emerald-500 text-xs font-black text-emerald-800 tracking-wide" style={{textDecoration: 'none'}}>
                                             <span className="text-sm">🌿</span> iHerb
@@ -1598,13 +1459,11 @@
                                     </div>
                                 </div>
                                 <div className="flex bg-slate-100 p-1 rounded-full shrink-0 mt-1">
-                                    {/* ИСПРАВЛЕНО: Принудительное использование t() для отображения имени на текущем языке */}
-                                    <button onClick={() => setActiveProfileId('me')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-me ${activeProfileId === 'me' ? 'bg-orange-500 active text-white shadow' : 'text-slate-500'}`}>👩 {t('my_profile')}</button>
-                                    <button onClick={() => handleProfileSwitch('partner')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-partner ${activeProfileId === 'partner' ? 'bg-blue-500 active text-white shadow shadow-blue-200' : 'text-slate-500'}`}>👨 {t('partner_profile')}</button>
+                                    <button onClick={() => setActiveProfileId('me')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-me ${activeProfileId === 'me' ? 'bg-orange-500 active text-white shadow' : 'text-slate-500'}`}>👩 {appData.me.name}</button>
+                                    <button onClick={() => handleProfileSwitch('partner')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex gap-1 profile-btn-partner ${activeProfileId === 'partner' ? 'bg-blue-500 active text-white shadow shadow-blue-200' : 'text-slate-500'}`}>👨 {appData.partner.name}</button>
                                 </div>
                                 <div className="flex flex-col items-end gap-1 shrink-0"> 
                                     <div className="flex items-center gap-2">
-                                        {/* REMOVED: iHerb button was here, moved to left */}
                                         <button onClick={() => setShowSettings(true)} className="w-8 h-8 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-emerald-600"><IconSettings/></button>
                                     </div>
                                     {fastingStats && (<span className="text-[10px] font-bold text-indigo-500 flex items-center gap-1 h-4"><IconClock className="w-3 h-3"/> {t('hunger')}: {formatDuration(fastingStats.hours * 3600 * 1000 + fastingStats.mins * 60 * 1000)}</span>)}
@@ -1756,7 +1615,7 @@
                     <div className="max-w-md mx-auto p-4 space-y-3">
                         <div className={`flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 card-style search-menu-toggle ${searchTerm && activeTab === 'diary' ? 'hidden' : ''}`}>
                             <button onClick={() => setActiveTab('diary')} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'diary' ? 'bg-slate-800 text-white shadow-md btn-primary' : 'text-slate-400 hover:bg-slate-50'}`}><IconUtensils /> {t('diary')}</button>
-                            {activeProfileId === 'me' && (<button onClick={() => { setActiveTab('create'); setEditingId(null); setNewFood({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }); }} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'create' ? 'bg-indigo-600 text-white shadow-md btn-secondary' : 'text-slate-400 hover:bg-slate-50'}`}><IconChefHat /> {t('recipe')}</button>)}
+                            {activeProfileId === 'me' && (<button onClick={() => { setActiveTab('create'); setEditingRecipeModal(null); }} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'create' ? 'bg-indigo-600 text-white shadow-md btn-secondary' : 'text-slate-400 hover:bg-slate-50'}`}><IconChefHat /> {t('recipe')}</button>)}
                         </div>
                         
                         {activeTab === 'diary' && (
@@ -1781,8 +1640,8 @@
                                                                 <div className="flex-1 min-w-0"><div className="font-bold text-slate-700 leading-tight">{item.name}</div><FoodInfoDisplay item={{...item, grams: null}} t={t} /></div>
                                                             </div>
                                                             <div className="flex gap-2 shrink-0 pt-2">
-                                                                {item.recipe && <button type="button" onClick={(e) => toggleRecipeViewInList(e, item.id)} className={`p-2 rounded-lg transition-colors ${searchViewingRecipeId === item.id ? 'bg-purple-100 text-purple-600' : 'bg-slate-200 text-slate-400 hover:text-purple-500'}`}><IconBook className="w-4 h-4"/></button>}
-                                                                {item.isCustom && activeProfileId === 'me' && (<button type="button" onClick={(e) => startEditCustomFood(e, item)} className="text-slate-300 hover:text-indigo-500 p-2 bg-slate-50 rounded-lg"><IconEdit className="w-4 h-4"/></button>)}
+                                                                {item.recipe && <button type="button" onClick={(e) => {e.stopPropagation(); openRecipeModal(item, 'view');}} className={`p-2 rounded-lg transition-colors bg-purple-100 text-purple-600`}><IconBook className="w-4 h-4"/></button>}
+                                                                {item.isCustom && activeProfileId === 'me' && (<button type="button" onClick={(e) => {e.stopPropagation(); openRecipeModal(item, 'edit');}} className="text-slate-300 hover:text-indigo-500 p-2 bg-slate-50 rounded-lg"><IconEdit className="w-4 h-4"/></button>)}
                                                             </div>
                                                         </div>
                                                         {searchViewingRecipeId === item.id && item.recipe && <div className="px-4 pb-3 pt-0 text-xs text-slate-600 bg-slate-50 border-t border-slate-100 whitespace-pre-wrap">{item.recipe.replace(/\\n/g, '\n')}</div>}
@@ -1794,21 +1653,9 @@
                                     {selectedFood && (
                                         <div className="mt-4 pt-4 border-t border-dashed border-slate-100 scale-in">
                                             <FoodInfoDisplay item={{...selectedFood, grams: null}} t={t} />
-                                            {selectedFood.recipe && <div className="flex justify-end mt-4 mb-2"><button onClick={()=>setShowRecipe(!showRecipe)} className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg hover:bg-indigo-100">{showRecipe ? t('hide_recipe') : t('show_recipe')}</button></div>}
-                                            {showRecipe && <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg mb-3 whitespace-pre-wrap">{selectedFood.recipe.replace(/\\n/g, '\n')}</div>}
+                                            {selectedFood.recipe && <div className="flex justify-end mt-4 mb-2"><button onClick={()=>openRecipeModal(selectedFood, 'view')} className="text-xs font-bold text-purple-500 bg-purple-50 px-3 py-2 rounded-lg hover:bg-purple-100 flex items-center gap-1"><IconBook className="w-3 h-3"/> {t('show_recipe')}</button></div>}
                                             <div className="flex gap-2 mt-4">
-                                                <input 
-                                                    type="number" 
-                                                    placeholder={t('gram_placeholder')} 
-                                                    value={gramInput} 
-                                                    onChange={e=>{
-                                                        setGramInput(e.target.value);
-                                                        setSearchTerm(selectedFood.name); 
-                                                    }} 
-                                                    ref={gramInputRef} 
-                                                    className="flex-1 bg-slate-50 rounded-xl px-4 font-bold text-xl outline-none border-2 border-transparent focus:border-emerald-200" 
-                                                    inputMode="decimal"
-                                                />
+                                                <input type="number" placeholder={t('gram_placeholder')} value={gramInput} onChange={e=>{setGramInput(e.target.value); setSearchTerm(selectedFood.name);}} ref={gramInputRef} className="flex-1 bg-slate-50 rounded-xl px-4 font-bold text-xl outline-none border-2 border-transparent focus:border-emerald-200" inputMode="decimal" />
                                                 <button onClick={addToLog} disabled={!gramInput} className="bg-emerald-500 hover:bg-emerald-600 btn-primary text-white px-6 rounded-xl shadow-lg shadow-emerald-200 transition-transform active:scale-95 shrink-0"><IconPlus /></button>
                                             </div>
                                         </div>
@@ -1826,8 +1673,7 @@
                                     <div className="space-y-2 pb-20">
                                         {todayLogWithFasting.length === 0 && <div className="text-center text-slate-400 py-10 text-sm">{t('empty_log')}</div>}
                                         {todayLogWithFasting.map(item => {
-                                            const time = formatTime(item.date);
-                                            const fastingDuration = formatDuration(item.fasting.ms);
+                                            const time = formatTime(item.date); const fastingDuration = formatDuration(item.fasting.ms);
                                             return (
                                             <div key={item.id} className="bg-white p-3 rounded-2xl border border-slate-50 shadow-sm flex justify-between items-start scale-in card-style">
                                                 <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -1837,3 +1683,113 @@
                                                         <div className="flex gap-3 text-[10px] font-bold mt-1 mb-1"><span className="text-indigo-500 flex items-center gap-0.5"><IconClock className="w-3 h-3"/> {t('meal_time')}: {time}</span>{item.fasting.ms > 60000 && (<span className="text-slate-500">{t('fast_before')}: {fastingDuration}</span>)}</div>
                                                         <FoodInfoDisplay item={item} t={t} /> 
                                                     </div>
+                                                </div>
+                                                <button onClick={()=>removeLog(item.id)} className="text-slate-200 hover:text-red-400 p-2 shrink-0"><IconTrash/></button>
+                                            </div>
+                                        )})}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'create' && (
+                            <div className="bg-white p-6 rounded-3xl shadow-lg border border-indigo-100 fade-in-up card-style">
+                                {/* НОВОЕ: Большая красивая кнопка для создания рецепта (замена формы) */}
+                                <button onClick={() => openRecipeModal({ name: '', pro: '', fat: '', carb: '', fiber: '', cal: '', recipe: '' }, 'edit')} className="w-full relative overflow-hidden bg-gradient-to-r from-orange-400 to-orange-500 text-white font-black py-6 rounded-2xl shadow-xl shadow-orange-200 transition-all active:scale-95 group mb-6 flex items-center justify-between px-6">
+                                    <div className="flex flex-col items-start z-10">
+                                        <span className="text-2xl leading-none mb-1 text-orange-50 drop-shadow-sm">+</span>
+                                        <span className="text-lg leading-tight drop-shadow-md">{t('new_recipe_title')}</span>
+                                    </div>
+                                    <IconChefHat className="w-16 h-16 absolute -right-2 -bottom-2 text-white/20 rotate-12 group-hover:rotate-0 transition-transform duration-500"/>
+                                    <IconChefHat className="w-8 h-8 relative z-10 drop-shadow-md"/>
+                                </button>
+                                
+                                <h3 className="font-bold text-slate-400 text-xs uppercase mt-6 mb-2">{t('your_recipes_title')}</h3>
+                                <div className="relative mb-4">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"><IconSearch className="w-4 h-4"/></div>
+                                    <input type="text" placeholder={t('search_recipes_placeholder')} value={searchRecipeTerm} onChange={(e) => setSearchRecipeTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border-none outline-none font-medium text-sm text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                                </div>
+                                <div className="mt-2 space-y-2">
+                                    {customFoods.filter(f => f.name.toLowerCase().includes(searchRecipeTerm.toLowerCase())).map(f => {
+                                        return (
+                                        <div key={f.id} className="bg-slate-50 rounded-xl p-3 border border-transparent hover:border-indigo-100 flex flex-col cursor-pointer" onClick={(e) => openRecipeModal(f, 'view')}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-start gap-3 overflow-hidden flex-1">
+                                                    <div className=""><div className="font-bold text-slate-700 text-sm break-words leading-tight pr-2">{f.name}</div><FoodInfoDisplay item={{...f, grams: null}} t={t} /></div>
+                                                </div>
+                                                <div className="flex gap-2 shrink-0 pt-1">
+                                                    {f.recipe && (<div className="p-2 rounded-lg bg-purple-100 text-purple-600"><IconBook className="w-4 h-4"/></div>)}
+                                                    <button type="button" onClick={(e) => {e.stopPropagation(); openRecipeModal(f, 'edit');}} className="text-slate-300 hover:text-indigo-500 p-2 bg-slate-50 rounded-lg z-10"><IconEdit className="w-4 h-4"/></button>
+                                                    <button type="button" onClick={(e) => deleteCustomFoodWrapper(e, f.id)} className="text-slate-300 hover:text-red-500 p-2 bg-slate-50 rounded-lg z-10"><IconTrash className="w-4 h-4"/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )})}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    </div> {/* Close fade-in-up wrapper */}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    
+    <!-- === ЛОГИКА УСТАНОВКИ (В САМОМ КОНЦЕ) === -->
+    <script>
+        // 1. Регистрация Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+
+        // 2. Логика кнопки установки (Android / Desktop)
+        let deferredPrompt;
+        const installBtn = document.getElementById('installAppBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Запрещаем браузеру показывать скучную стандартную плашку
+            e.preventDefault();
+            // Сохраняем событие
+            deferredPrompt = e;
+            // Показываем нашу красивую кнопку
+            installBtn.style.display = 'flex';
+        });
+
+        installBtn.addEventListener('click', () => {
+            // Прячем кнопку
+            installBtn.style.display = 'none';
+            // Показываем окно установки
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Пользователь согласился установить');
+                    } else {
+                        console.log('Пользователь отказался');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        // 3. Логика для iOS (iPhone / iPad)
+        const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
+
+        // Если это Айфон и приложение еще НЕ установлено
+        if (isIos && !isInStandaloneMode) {
+            // Показываем подсказку через 3 секунды
+            setTimeout(() => {
+                document.getElementById('iosInstallPrompt').style.display = 'block';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
