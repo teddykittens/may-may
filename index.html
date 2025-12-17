@@ -5,206 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Keto Diary</title>
     
-    <!-- === ВАЖНО: ПОДКЛЮЧЕНИЕ MANIFEST.JSON === -->
+    <!-- PWA MANIFEST -->
     <link rel="manifest" href="manifest.json">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Keto Diary">
+    <meta name="theme-color" content="#ffffff">
 
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
-    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/706/706164.png?v=final">
+    <!-- ICONS -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 
-    <!-- Libraries -->
+    <!-- LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Barcode Scanner Library -->
+    <!-- Сканер штрих-кода -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-    <!-- FIREBASE (Compatible Version) -->
+    
+    <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
     
     <style>
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            background-color: #fff7ed; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            overscroll-behavior-y: none;
-            transition: background-color 0.3s ease;
-        }
+        body { -webkit-tap-highlight-color: transparent; background-color: #fff7ed; font-family: -apple-system, sans-serif; overscroll-behavior-y: none; }
         
-        /* --- СТИЛЬ КНОПКИ УСТАНОВКИ (ANDROID) --- */
+        /* Стили для кнопки установки */
         #installAppBtn {
-            display: none; /* Скрыта, пока браузер не разрешит */
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 14px 28px;
-            border-radius: 50px;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5);
-            font-weight: bold;
-            font-size: 15px;
-            border: 2px solid rgba(255,255,255,0.2);
-            align-items: center;
-            gap: 10px;
-            white-space: nowrap;
-            animation: pulseBtn 2s infinite;
-            cursor: pointer;
+            display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 14px 28px; border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5); font-weight: bold; border: 2px solid rgba(255,255,255,0.2);
+            cursor: pointer; animation: pulseBtn 2s infinite; white-space: nowrap;
         }
-        @keyframes pulseBtn {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
+        @keyframes pulseBtn { 0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); } 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); } }
 
-        /* --- СТИЛЬ ПОДСКАЗКИ ДЛЯ IPHONE (iOS) --- */
+        /* Подсказка iOS */
         #iosInstallPrompt {
-            display: none; /* Скрыта по умолчанию */
-            position: fixed;
-            bottom: 20px;
-            left: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            z-index: 9999;
-            border: 1px solid #e2e8f0;
-            backdrop-filter: blur(10px);
-            animation: slideUp 0.5s ease-out;
+            display: none; position: fixed; bottom: 20px; left: 10px; right: 10px;
+            background: rgba(255, 255, 255, 0.95); border-radius: 16px; padding: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 9999; border: 1px solid #e2e8f0; backdrop-filter: blur(10px);
         }
         .ios-close { position: absolute; top: 10px; right: 10px; color: #94a3b8; background: none; border: none; font-size: 20px; }
+        .scale-in { animation: scaleIn 0.3s ease-out forwards; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .slide-up { animation: slideUp 0.5s ease-out forwards; }
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        /* Остальные стили */
-        #error-display {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 20px;
-            z-index: 99999;
-            font-size: 12px;
-            border-bottom: 2px solid #ef4444;
-            max-height: 50vh;
-            overflow: auto;
-        }
-
-        body.partner-mode {
-            background-color: #2563eb !important; 
-        }
-
-        .partner-active .card-style { 
-            background-color: #eff6ff !important; 
-            border-color: #93c5fd !important; 
-        }
-
+        
+        /* Стили из твоего файла */
+        #error-display { display: none; position: fixed; top: 0; left: 0; right: 0; background: #fee2e2; color: #991b1b; padding: 20px; z-index: 99999; font-size: 12px; border-bottom: 2px solid #ef4444; max-height: 50vh; overflow: auto; }
+        body.partner-mode { background-color: #2563eb !important; }
+        .partner-active .card-style { background-color: #eff6ff !important; border-color: #93c5fd !important; }
         .partner-active .accent-text { color: #1e40af !important; } 
         .partner-active .accent-bg { background-color: #3b82f6 !important; } 
         .partner-active .accent-border { border-color: #60a5fa !important; } 
-        
-        .partner-active .btn-primary { 
-            background-color: #1d4ed8 !important; 
-            color: white !important;
-        }
-        .partner-active .btn-secondary {
-            background-color: #2563eb !important; 
-            color: white !important;
-        }
-
+        .partner-active .btn-primary { background-color: #1d4ed8 !important; color: white !important; }
+        .partner-active .btn-secondary { background-color: #2563eb !important; color: white !important; }
         .partner-active .water-icon-active { color: #2563eb !important; } 
         .partner-active .water-icon-inactive { color: #cbd5e1 !important; }
-        
         input, select, textarea { font-size: 16px !important; } 
-        
         .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .scale-in { animation: scaleIn 0.3s ease-out forwards; }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
         .toast-enter { animation: toastEnter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes toastEnter { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            bottom: 0;
-            color: transparent;
-            cursor: pointer;
-            height: auto;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: auto;
-        }
-        
-        .collapsible {
-            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
-            max-height: 0;
-            opacity: 0;
-            padding-top: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-        .collapsible.expanded {
-            max-height: 500px; 
-            opacity: 1;
-            padding-top: 8px;
-            pointer-events: auto;
-        }
-
+        input[type="date"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
+        .collapsible { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out; max-height: 0; opacity: 0; padding-top: 0; pointer-events: none; overflow: hidden; }
+        .collapsible.expanded { max-height: 500px; opacity: 1; padding-top: 8px; pointer-events: auto; }
         .profile-btn-me.active { background-color: #f97316; color: white; } 
         .profile-btn-partner.active { background-color: #3b82f6; color: white; } 
-        
         .partner-active .profile-btn-me.active { background-color: #fdba74 !important; color: white !important; }
         .partner-active .profile-btn-partner.active { background-color: #ffffff !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
-        
-        .search-menu-toggle {
-            transition: all 0.2s ease-in-out;
-        }
-        .search-menu-toggle.hidden {
-            opacity: 0;
-            transform: translateY(-10px);
-            max-height: 0;
-            overflow: hidden;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-            pointer-events: none;
-        }
-        
-        @media (max-width: 767px) {
-            .fullscreen-modal-content {
-                height: 100%;
-                border-radius: 0;
-            }
-        }
+        .search-menu-toggle { transition: all 0.2s ease-in-out; }
+        .search-menu-toggle.hidden { opacity: 0; transform: translateY(-10px); max-height: 0; overflow: hidden; padding: 0 !important; margin: 0 !important; pointer-events: none; }
+        @media (max-width: 767px) { .fullscreen-modal-content { height: 100%; border-radius: 0; } }
     </style>
 </head>
 <body id="body-tag">
     
-    <!-- === НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ УСТАНОВКИ === -->
-    
-    <!-- 1. Кнопка для Android (Скрыта по умолчанию) -->
+    <!-- 1. КНОПКА УСТАНОВКИ (Android) -->
     <button id="installAppBtn">📲 Установить приложение</button>
     
-    <!-- 2. Подсказка для iOS (iPhone) -->
+    <!-- 2. ПОДСКАЗКА (iPhone) -->
     <div id="iosInstallPrompt">
         <button class="ios-close" onclick="document.getElementById('iosInstallPrompt').style.display='none'">&times;</button>
         <div class="flex items-start gap-4">
-            <img src="https://cdn-icons-png.flaticon.com/512/706/706164.png" class="w-12 h-12 rounded-xl shadow-sm">
+            <img src="icon.png" class="w-12 h-12 rounded-xl shadow-sm" onerror="this.style.display='none'">
             <div class="text-sm text-slate-700">
                 <p class="font-bold text-slate-900 mb-1">Установите Keto Diary</p>
                 <p>Нажмите <span class="font-bold text-blue-600 text-lg">Поделиться</span> <svg class="inline w-5 h-5 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></p>
@@ -212,7 +97,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- ERROR LOGGER -->
     <div id="error-display"></div>
     <script>
@@ -226,15 +111,18 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- SAFE INITIALIZATION ---
+        // ------------------------------------------------------------------
+        // 🔥 ВСТАВЛЕНЫ ПРАВИЛЬНЫЕ КЛЮЧИ FIREBASE 🔥
+        // ------------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyCVgpdUSxWkYT6aZNO3WVlY52ZOlKnb1AY",
             authDomain: "ketoapp-7f205.firebaseapp.com",
             projectId: "ketoapp-7f205",
-            storageBucket: "ketoapp-7f205.appspot.com",
-            messagingSenderId: "YOUR_ID",
-            appId: "YOUR_APP_ID" 
+            storageBucket: "ketoapp-7f205.firebasestorage.app", // Обновил домен хранилища
+            messagingSenderId: "394277349118", // Вставил твой ID
+            appId: "1:394277349118:web:5b82be896e7a9e0ca967af" // Вставил твой AppID
         };
+        // ------------------------------------------------------------------
         
         const IHERB_AFFILIATE_LINK = "https://iherb.co/1m3x6Q75?rcode=DHW8343&utm_medium=appshare";
 
@@ -253,7 +141,6 @@
             }
         } catch (err) {
             console.error("Firebase Init Error:", err);
-            // Don't alert, just log. App will try to render without DB.
         }
 
         const { useState, useEffect, useMemo, useRef } = React;
